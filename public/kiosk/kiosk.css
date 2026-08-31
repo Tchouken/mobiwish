@@ -1,0 +1,69 @@
+/* Interface borne : iPad Pro en mode kiosque, cibles tactiles genereuses. */
+.kiosk {
+  background: linear-gradient(160deg, var(--sand) 0%, #fff 55%, var(--brand-soft) 100%);
+  min-height: 100dvh;
+  overflow: hidden;
+  user-select: none;
+}
+.kiosk input, .kiosk textarea { user-select: text; }
+
+.screen {
+  min-height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
+  padding: max(2rem, env(safe-area-inset-top)) 2rem max(2rem, env(safe-area-inset-bottom));
+  animation: fade .35s ease both;
+}
+@keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.screen-inner { width: min(100%, 780px); }
+.screen h1 { font-size: clamp(2.6rem, 6vw, 4.6rem); }
+.screen h2 { font-size: clamp(1.7rem, 3.2vw, 2.6rem); }
+.eyebrow { font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--brand-dark); font-size: .95rem; }
+.step { font-weight: 700; color: var(--ink-faint); letter-spacing: .04em; text-transform: uppercase; font-size: .85rem; }
+.lead { font-size: clamp(1.1rem, 2vw, 1.5rem); max-width: 24ch; }
+
+/* Accueil */
+.screen--attract { position: relative; }
+.attract-inner { width: min(100%, 900px); position: relative; z-index: 1; }
+.attract-foot { margin-top: 1.5rem; max-width: 40ch; }
+.attract-art { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.attract-art span {
+  position: absolute; border-radius: 50%; opacity: .5;
+  background: radial-gradient(circle at 30% 30%, var(--brand) 0%, transparent 70%);
+  animation: float 14s ease-in-out infinite;
+}
+.attract-art span:nth-child(1) { width: 46vmin; height: 46vmin; right: -8vmin; top: -6vmin; }
+.attract-art span:nth-child(2) { width: 32vmin; height: 32vmin; right: 14vmin; bottom: -8vmin; animation-delay: -4s; opacity: .3; }
+.attract-art span:nth-child(3) { width: 22vmin; height: 22vmin; left: -6vmin; bottom: 18vmin; animation-delay: -8s; opacity: .25; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3vmin); } }
+
+/* Formulaires borne */
+.kiosk .field > span { font-size: 1.1rem; }
+.kiosk input, .kiosk textarea { font-size: 1.35rem; padding: 1.1rem 1.2rem; border-radius: var(--radius-m); }
+.kiosk textarea { min-height: 12rem; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.counter { text-align: right; color: var(--ink-faint); font-variant-numeric: tabular-nums; margin-top: -.5rem; }
+.actions { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem; flex-wrap: wrap; }
+.actions .btn { flex: 0 1 auto; }
+
+/* Resultat */
+.screen--result .result-grid {
+  width: min(100%, 1180px);
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr);
+  gap: 2.5rem; align-items: center;
+}
+.result-image { margin: 0; border-radius: var(--radius-l); overflow: hidden; box-shadow: var(--shadow-m); background: var(--paper); }
+.result-image img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.result-side { display: flex; flex-direction: column; gap: 1rem; }
+.result-side h2 { margin: 0; }
+.result-side .badge { align-self: flex-start; }
+.result-qr { display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--paper); border-radius: var(--radius-m); box-shadow: var(--shadow-s); }
+.result-qr img { border-radius: 8px; }
+.result-qr p { margin: 0; }
+
+.screen--loading .spinner { width: 4.5rem; height: 4.5rem; margin: 0 auto 2rem; border-width: 6px; }
+
+@media (max-width: 900px) {
+  .screen--result .result-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .grid-2 { grid-template-columns: 1fr; }
+}

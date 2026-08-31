@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Borne IA — L’entreprise de demain</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="/shared/theme.css" />
+  <link rel="stylesheet" href="/kiosk/kiosk.css" />
+</head>
+<body class="kiosk">
+  <main id="app">
+
+    <!-- 1. Ecran d'attente -->
+    <section class="screen screen--attract" id="screen-attract">
+      <div class="attract-inner">
+        <p class="eyebrow" id="attract-event">Journée créative</p>
+        <h1>Imaginez<br />l’entreprise de demain</h1>
+        <p class="lead" id="attract-question">Chargement de la question…</p>
+        <button class="btn btn--lg" id="btn-start">Commencer</button>
+        <p class="faint attract-foot">Votre idée devient une image, générée par l’IA en quelques secondes.</p>
+      </div>
+      <div class="attract-art" aria-hidden="true"><span></span><span></span><span></span></div>
+    </section>
+
+    <!-- 2. Identification -->
+    <section class="screen" id="screen-identity" hidden>
+      <div class="screen-inner">
+        <p class="step">Étape 1 sur 2</p>
+        <h2>Faisons connaissance</h2>
+        <p class="muted">Vos informations servent uniquement à rattacher votre projet et votre vote.</p>
+        <form id="form-identity" novalidate>
+          <div class="grid-2">
+            <label class="field"><span>Prénom</span>
+              <input id="firstName" name="firstName" type="text" autocomplete="off" autocapitalize="words" required maxlength="60" />
+            </label>
+            <label class="field"><span>Nom</span>
+              <input id="lastName" name="lastName" type="text" autocomplete="off" autocapitalize="words" required maxlength="60" />
+            </label>
+          </div>
+          <label class="field"><span>E-mail professionnel</span>
+            <input id="email" name="email" type="email" inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false" required maxlength="254" />
+          </label>
+          <p class="notice notice--error" id="identity-error" hidden></p>
+          <div class="actions">
+            <button type="button" class="btn btn--ghost" data-action="home">Annuler</button>
+            <button type="submit" class="btn btn--lg" id="identity-submit">Continuer</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 3. Question creative -->
+    <section class="screen" id="screen-answer" hidden>
+      <div class="screen-inner">
+        <p class="step">Étape 2 sur 2 — <span id="answer-hello"></span></p>
+        <h2 id="answer-question">…</h2>
+        <form id="form-answer" novalidate>
+          <label class="field">
+            <span class="sr-only">Votre réponse</span>
+            <textarea id="answer" maxlength="1200" rows="6" placeholder="Décrivez votre idée en quelques phrases : ce qu’elle change, pour qui, à quoi elle ressemble…"></textarea>
+          </label>
+          <p class="counter"><span id="answer-count">0</span> / 1200 caractères</p>
+          <p class="notice notice--error" id="answer-error" hidden></p>
+          <div class="actions">
+            <button type="button" class="btn btn--ghost" data-action="home">Annuler</button>
+            <button type="submit" class="btn btn--lg" id="answer-submit">Générer mon image</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 4. Generation en cours -->
+    <section class="screen screen--loading" id="screen-loading" hidden>
+      <div class="screen-inner center">
+        <div class="spinner" role="status" aria-live="polite"></div>
+        <h2>L’IA dessine votre idée…</h2>
+        <p class="muted" id="loading-hint">Cela prend généralement moins d’une minute.</p>
+      </div>
+    </section>
+
+    <!-- 5. Resultat -->
+    <section class="screen screen--result" id="screen-result" hidden>
+      <div class="result-grid">
+        <figure class="result-image">
+          <img id="result-img" alt="Illustration générée à partir de votre idée" />
+        </figure>
+        <div class="result-side">
+          <p class="badge">Projet ajouté à la galerie</p>
+          <h2 id="result-title"></h2>
+          <p class="muted" id="result-answer"></p>
+          <div class="result-qr">
+            <img src="/api/qr.svg" alt="QR code d’accès au vote" width="132" height="132" />
+            <p class="faint">Scannez pour voter depuis votre mobile.</p>
+          </div>
+          <button class="btn btn--lg btn--block" data-action="home">Terminer</button>
+          <p class="faint center" id="result-countdown"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Borne fermee -->
+    <section class="screen screen--closed" id="screen-closed" hidden>
+      <div class="screen-inner center">
+        <h2>La borne est momentanément fermée</h2>
+        <p class="muted">Rendez-vous sur l’écran de l’événement pour suivre les résultats.</p>
+        <button class="btn btn--ghost" data-action="home">Réessayer</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/shared/app.js"></script>
+  <script src="/kiosk/kiosk.js"></script>
+</body>
+</html>

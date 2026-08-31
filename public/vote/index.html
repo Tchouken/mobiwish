@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Vote — Les projets de la journée</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ff6e14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="/shared/theme.css" />
+  <link rel="stylesheet" href="/vote/vote.css" />
+</head>
+<body class="vote">
+  <header class="vote-head">
+    <div class="wrap spread">
+      <div class="brandmark"><i></i><span id="event-name">Galerie des projets</span></div>
+      <button class="btn btn--quiet btn--sm" id="btn-ranking" type="button">Classement</button>
+    </div>
+  </header>
+
+  <main class="wrap" id="main">
+    <section class="intro" id="intro">
+      <h1>Votez pour vos projets préférés</h1>
+      <p class="muted" id="intro-help">Sélectionnez jusqu’à 3 projets, puis validez votre vote. Un seul vote par participant.</p>
+      <p class="notice notice--info hidden" id="banner"></p>
+    </section>
+
+    <div class="gallery" id="gallery" aria-live="polite"></div>
+    <p class="center muted hidden" id="empty">Aucun projet pour le moment. Les premières créations arrivent bientôt !</p>
+  </main>
+
+  <!-- Barre de vote -->
+  <div class="votebar hidden" id="votebar">
+    <div class="wrap spread">
+      <span id="votebar-count">0 projet sélectionné</span>
+      <button class="btn" id="btn-vote" type="button">Valider mon vote</button>
+    </div>
+  </div>
+
+  <!-- Feuille d'identification -->
+  <div class="sheet hidden" id="sheet-identity" role="dialog" aria-modal="true" aria-labelledby="identity-title">
+    <div class="sheet-panel">
+      <h2 id="identity-title">Identifiez-vous pour voter</h2>
+      <p class="muted">Un seul vote par personne. Vos informations restent internes à l’événement.</p>
+      <form id="form-identity" novalidate>
+        <label class="field"><span>Prénom</span><input id="firstName" type="text" autocomplete="given-name" required maxlength="60" /></label>
+        <label class="field"><span>Nom</span><input id="lastName" type="text" autocomplete="family-name" required maxlength="60" /></label>
+        <label class="field"><span>E-mail</span><input id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" required maxlength="254" /></label>
+        <p class="notice notice--error" id="identity-error" hidden></p>
+        <div class="sheet-actions">
+          <button type="button" class="btn btn--ghost" data-close>Annuler</button>
+          <button type="submit" class="btn" id="identity-submit">Valider mon vote</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Detail d'un projet -->
+  <div class="sheet hidden" id="sheet-detail" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <div class="sheet-panel">
+      <img id="detail-img" alt="" class="detail-img" />
+      <h2 id="detail-title"></h2>
+      <p class="faint" id="detail-author"></p>
+      <p id="detail-answer"></p>
+      <div class="sheet-actions">
+        <button type="button" class="btn btn--ghost" data-close>Fermer</button>
+        <button type="button" class="btn" id="detail-select">Sélectionner</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation + classement -->
+  <div class="sheet hidden" id="sheet-ranking" role="dialog" aria-modal="true" aria-labelledby="ranking-title">
+    <div class="sheet-panel">
+      <h2 id="ranking-title">Classement en direct</h2>
+      <p class="notice notice--ok hidden" id="ranking-thanks">Merci, votre vote est enregistré !</p>
+      <ol class="ranking" id="ranking"></ol>
+      <p class="muted hidden" id="ranking-hidden">Les résultats seront révélés en fin de journée.</p>
+      <div class="sheet-actions">
+        <button type="button" class="btn btn--ghost" data-close>Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/shared/app.js"></script>
+  <script src="/vote/vote.js"></script>
+</body>
+</html>

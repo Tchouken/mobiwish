@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Écran événement — Classement en direct</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="/shared/theme.css" />
+  <link rel="stylesheet" href="/display/display.css" />
+</head>
+<body class="display">
+  <header class="display-head">
+    <div>
+      <p class="eyebrow" id="event-name">Journée créative</p>
+      <h1>Les projets de la journée</h1>
+    </div>
+    <div class="qr-block">
+      <img src="/api/qr.svg" alt="QR code pour voter" width="150" height="150" />
+      <p><strong>Scannez pour voter</strong><br /><span class="faint" id="vote-url"></span></p>
+    </div>
+  </header>
+
+  <section class="counters">
+    <div class="counter"><span id="c-projects">0</span><small>projets créés</small></div>
+    <div class="counter"><span id="c-voters">0</span><small>votants</small></div>
+    <div class="counter"><span id="c-votes">0</span><small>votes exprimés</small></div>
+    <div class="counter"><span id="c-status">—</span><small>statut des votes</small></div>
+  </section>
+
+  <main class="board">
+    <div class="podium" id="podium"></div>
+    <ol class="rest" id="rest"></ol>
+    <p class="veil hidden" id="veil">🏆 Résultats révélés en fin de journée</p>
+  </main>
+
+  <footer class="display-foot">
+    <span class="faint">Mise à jour en direct</span>
+    <span class="live" id="live"><i></i> connecté</span>
+  </footer>
+
+  <script src="/shared/app.js"></script>
+  <script src="/display/display.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "mobiwish",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Borne IA + WebApp de vote pour journee evenementielle (generation d'images IA, galerie de projets, vote mobile, classement temps reel)",
+  "type": "commonjs",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test test/*.test.js",
+    "seed": "node scripts/seed.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
+  }
+}

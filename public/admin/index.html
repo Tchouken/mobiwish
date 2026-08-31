@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Console d’administration — MobiWish</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="/shared/theme.css" />
+  <link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brandmark"><i></i> Console d’administration</div>
+      <div class="row">
+        <span class="badge badge--off" id="provider-badge">—</span>
+        <button class="btn btn--ghost btn--sm hidden" id="btn-logout" type="button">Se déconnecter</button>
+      </div>
+    </header>
+
+    <!-- Connexion -->
+    <section class="panel login" id="login">
+      <h2>Accès réservé</h2>
+      <form id="form-login">
+        <label class="field"><span>Code d’accès</span>
+          <input id="admin-token" type="password" autocomplete="off" required />
+        </label>
+        <p class="notice notice--error" id="login-error" hidden></p>
+        <button class="btn" type="submit">Entrer</button>
+      </form>
+    </section>
+
+    <main id="console" class="hidden">
+      <section class="tiles" id="tiles"></section>
+
+      <div class="cols">
+        <section class="panel">
+          <h2>Pilotage de la journée</h2>
+          <div class="toggles" id="toggles">
+            <label class="switch"><input type="checkbox" id="kiosk_open" /> <span>Borne ouverte</span></label>
+            <label class="switch"><input type="checkbox" id="voting_open" /> <span>Votes ouverts</span></label>
+            <label class="switch"><input type="checkbox" id="results_public" /> <span>Résultats visibles</span></label>
+            <label class="switch"><input type="checkbox" id="allow_self_vote" /> <span>Autoriser le vote pour son propre projet</span></label>
+          </div>
+
+          <label class="field"><span>Nom de l’événement</span><input id="event_name" type="text" maxlength="120" /></label>
+          <label class="field"><span>Question créative affichée sur la borne</span><textarea id="question" maxlength="400" rows="3"></textarea></label>
+          <label class="field"><span>Nombre de votes par participant</span><input id="votes_per_participant" type="number" min="1" max="10" /></label>
+
+          <p class="notice notice--ok" id="settings-ok" hidden>Réglages enregistrés.</p>
+          <p class="notice notice--error" id="settings-error" hidden></p>
+          <button class="btn" id="btn-save" type="button">Enregistrer</button>
+        </section>
+
+        <section class="panel">
+          <h2>Accès sur place</h2>
+          <div class="qr-admin">
+            <img src="/api/qr.svg" alt="QR code du vote mobile" width="180" height="180" />
+            <div>
+              <p><strong>Vote mobile</strong><br /><a id="vote-link" href="/vote" target="_blank" rel="noopener"></a></p>
+              <p><strong>Borne</strong><br /><a href="/kiosk" target="_blank" rel="noopener">/kiosk</a></p>
+              <p><strong>Écran</strong><br /><a href="/display" target="_blank" rel="noopener">/display</a></p>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn btn--quiet" id="btn-export" type="button">Exporter les projets (CSV)</button>
+            <button class="btn btn--danger" id="btn-reset" type="button">Réinitialiser l’événement</button>
+          </div>
+          <p class="faint">La réinitialisation supprime projets, votes et participants. Les images générées restent sur le disque.</p>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="spread">
+          <h2>Projets</h2>
+          <input id="search" type="text" placeholder="Rechercher un projet ou un auteur…" class="search" />
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th>Projet</th><th>Auteur</th><th>Statut</th><th class="num">Votes</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="projects"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/shared/app.js"></script>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>
