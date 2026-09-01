@@ -123,7 +123,88 @@ async function openaiGenerate(prompt) {
   }
 }
 
-const PROVIDERS = { mock: mockGenerate, openai: openaiGenerate };
+/** Extension de fichier a partir du type MIME renvoye par le fournisseur. */
+function extensionFor(mime) {
+  if (/jpe?g/i.test(mime)) return 'jpg';
+  if (/webp/i.test(mime)) return 'webp';
+  if (/svg/i.test(mime)) return 'svg';
+  return 'png';
+}
+
+/**
+ * Fournisseur Google Gemini (API Generative Language).
+ * L'image revient encodee en base64 dans une partie `inlineData` de la
+ * reponse ; les autres parties (raisonnement du modele) sont ignorees.
+ */
+async function geminiGenerate(prompt) {
+  if (!config.image.geminiKey) {
+    const err = new Error('GEMINI_API_KEY absent : impossible de generer l’image.');
+    err.code = 'provider_not_configured';
+    throw err;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), config.image.timeoutMs);
+  const model = config.image.geminiModel;
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          // La cle voyage en en-tete plutot qu'en parametre d'URL : elle
+          // n'apparait ni dans les journaux ni dans les traces reseau.
+          'x-goog-api-key': config.image.geminiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseModalities: ['IMAGE'],
+            imageConfig: { aspectRatio: config.image.geminiAspect },
+          },
+        }),
+        signal: controller.signal,
+      }
+    );
+
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(payload?.error?.message || `Erreur fournisseur d’images (HTTP ${res.status}).`);
+      err.code = 'provider_error';
+      throw err;
+    }
+
+    const blocked = payload?.promptFeedback?.blockReason;
+    if (blocked) {
+      const err = new Error(`Demande refusee par le fournisseur d’images (${blocked}). Reformulez l’idee.`);
+      err.code = 'provider_blocked';
+      throw err;
+    }
+
+    const candidate = payload?.candidates?.[0];
+    const inline = (candidate?.content?.parts || []).find((part) => part?.inlineData?.data)?.inlineData;
+    if (!inline) {
+      const reason = candidate?.finishReason ? ` (${candidate.finishReason})` : '';
+      const err = new Error(`Aucune image renvoyee par le fournisseur${reason}.`);
+      err.code = 'provider_empty';
+      throw err;
+    }
+
+    const mime = inline.mimeType || 'image/png';
+    return {
+      buffer: Buffer.from(inline.data, 'base64'),
+      mime,
+      ext: extensionFor(mime),
+      provider: 'gemini',
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const PROVIDERS = { mock: mockGenerate, openai: openaiGenerate, gemini: geminiGenerate };
 
 async function generateImage(prompt, options = {}) {
   const name = (options.provider || config.image.provider || 'mock').toLowerCase();

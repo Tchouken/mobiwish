@@ -60,9 +60,17 @@ const config = {
     openaiModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5',
     openaiSize: process.env.OPENAI_IMAGE_SIZE || '1024x1024',
     openaiQuality: process.env.OPENAI_IMAGE_QUALITY || 'medium',
+    geminiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
+    geminiModel: process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
+    geminiAspect: process.env.GEMINI_IMAGE_ASPECT || '1:1',
+    // Bloc « rendu impose » du prompt : c'est le levier de personnalisation
+    // graphique cote client (charte, ambiance, technique d'illustration).
     style:
       process.env.IMAGE_STYLE ||
-      'illustration editoriale moderne, formes geometriques simples, aplats de couleurs vives dominante orange, fond clair, sans texte',
+      'illustration vectorielle editoriale, formes geometriques simples et aplats de couleur, ' +
+        'composition centree et aeree, fond clair creme. ' +
+        'Palette imposee : orange vif dominant (#ff6e14) et ses nuances corail et sable, ' +
+        'encre profonde pour les contours, au plus une couleur froide en accent discret.',
     timeoutMs: int(process.env.IMAGE_TIMEOUT_MS, 90000),
     fallbackToMock: bool(process.env.IMAGE_FALLBACK_MOCK, true),
   },

@@ -59,8 +59,8 @@ donc une base gérée et un stockage objet. Le reste est automatique.
    SESSION_SECRET=<chaîne aléatoire de 32+ caractères>
    ADMIN_TOKEN=<code d’accès admin>
    PUBLIC_URL=https://<votre-domaine>
-   IMAGE_PROVIDER=openai
-   OPENAI_API_KEY=<clé OpenAI>
+   IMAGE_PROVIDER=gemini
+   GEMINI_API_KEY=<clé Google AI Studio>
    ```
 
 4. **Schéma de la base** : `npm run migrate` en local avec `DATABASE_URL` pointant sur la base de
@@ -114,7 +114,9 @@ centaines. Le mode `mock` permet de répéter le dispositif sans dépenser un ce
 | `RENDER_MODE` | `inline` (serveur durable) ou `request` (serverless) |
 | `REALTIME` | `sse` (serveur durable) ou `poll` (serverless) |
 | `PUBLIC_CACHE_SECONDS` | Durée de cache CDN des réponses publiques |
-| `IMAGE_PROVIDER` | `mock` (générateur local, sans clé) ou `openai` (API images) |
+| `IMAGE_PROVIDER` | `mock` (générateur local, sans clé), `gemini` (Google) ou `openai` |
+| `GEMINI_API_KEY` | Clé Google AI Studio si `IMAGE_PROVIDER=gemini` |
+| `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-image` par défaut |
 | `OPENAI_IMAGE_QUALITY` | `low`, `medium` ou `high` — pèse directement sur le coût et la durée |
 | `OPENAI_API_KEY` | Clé API si `IMAGE_PROVIDER=openai` |
 | `IMAGE_STYLE` | Style graphique appliqué à toutes les images générées |
