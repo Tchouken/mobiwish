@@ -38,9 +38,9 @@ function rememberedAccess() {
 function accessCandidates() {
   const remembered = rememberedAccess();
   if (remembered) return [remembered];
-  const declared = config.storage.blobAccess;
-  if (declared === 'public' || declared === 'private') return [declared];
-  return ['public', 'private'];
+  // Le mode declare est essaye en premier, l'autre ensuite : une declaration
+  // qui ne correspond pas au store ne doit pas bloquer la borne le jour J.
+  return config.storage.blobAccess === 'private' ? ['private', 'public'] : ['public', 'private'];
 }
 
 async function saveToBlob({ id, buffer, ext, mime }) {
@@ -70,7 +70,11 @@ async function saveToBlob({ id, buffer, ext, mime }) {
     }
   }
 
-  throw lastError;
+  const detail = lastError ? ` (${lastError.message})` : '';
+  const err = new Error(`Depot de l’image impossible dans le stockage objet${detail}.`);
+  err.code = 'storage_error';
+  err.cause = lastError;
+  throw err;
 }
 
 /** Mode d'acces retenu pour ce processus (utilise par la route /media). */

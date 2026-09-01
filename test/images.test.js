@@ -219,3 +219,50 @@ test('store Blob public : l’URL du CDN est utilisee telle quelle', async (t) =
   const saved = await saveImage({ id: 'prj_public', buffer: Buffer.from('x'), ext: 'jpg', mime: 'image/jpeg' });
   assert.match(saved.url, /^https:\/\/store\.public\.blob\.vercel-storage\.com\/projects\/prj_public\.jpg$/);
 });
+
+test('store Blob : un mode declare qui ne correspond pas ne bloque pas le depot', async (t) => {
+  const previous = { ...config.storage };
+  config.storage.driver = 'blob';
+  // Le jour J, une variable mal renseignee ne doit pas empecher la borne de
+  // publier : on essaie le mode declare, puis l'autre.
+  config.storage.blobAccess = 'private';
+
+  const attempts = [];
+  const restore = stubBlobSdk({
+    put: async (pathname, body, options) => {
+      attempts.push(options.access);
+      if (options.access === 'private') throw new Error('access must be "public"');
+      return { url: `https://store.public.blob.vercel-storage.com/${pathname}` };
+    },
+  });
+  t.after(() => { restore(); Object.assign(config.storage, previous); });
+
+  const { saveImage } = require('../server/services/media');
+  const saved = await saveImage({ id: 'prj_mismatch', buffer: Buffer.from('x'), ext: 'jpg', mime: 'image/jpeg' });
+
+  assert.deepEqual(attempts, ['private', 'public'], 'le mode declare est tente en premier');
+  assert.match(saved.url, /^https:\/\/store\.public\.blob\.vercel-storage\.com\//);
+  assert.equal(saved.access, 'public');
+
+  // Le mode retenu est memorise : le depot suivant n’essaie plus l’autre.
+  attempts.length = 0;
+  await saveImage({ id: 'prj_second', buffer: Buffer.from('x'), ext: 'jpg', mime: 'image/jpeg' });
+  assert.deepEqual(attempts, ['public']);
+});
+
+test('store Blob : les deux modes en echec donnent une erreur explicite', async (t) => {
+  const previous = { ...config.storage };
+  config.storage.driver = 'blob';
+  config.storage.blobAccess = 'auto';
+
+  const restore = stubBlobSdk({
+    put: async () => { throw new Error('jeton invalide'); },
+  });
+  t.after(() => { restore(); Object.assign(config.storage, previous); });
+
+  const { saveImage } = require('../server/services/media');
+  await assert.rejects(
+    () => saveImage({ id: 'prj_ko', buffer: Buffer.from('x'), ext: 'jpg', mime: 'image/jpeg' }),
+    (err) => err.code === 'storage_error' && /jeton invalide/.test(err.message)
+  );
+});

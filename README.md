@@ -55,9 +55,13 @@ donc une base gérée et un stockage objet. Le reste est automatique.
 2. **Stockage des images** — *Storage → Create → Blob*. L'intégration injecte `BLOB_READ_WRITE_TOKEN`.
    Un store Blob est créé **public** ou **privé**, et ce choix ne se modifie plus ensuite :
    - **public** : les images sont servies directement par le CDN de Vercel. Rien à configurer.
-   - **privé** : ajouter `BLOB_ACCESS=private`. L'application relaie alors chaque image derrière sa
-     propre adresse (`/media/…`), avec un cache CDN permanent — une seule lecture du stockage par
-     image et par région. Les visuels ne sont alors accessibles qu'à travers l'application.
+   - **privé** : l'application relaie chaque image derrière sa propre adresse (`/media/…`), avec un
+     cache CDN permanent — une seule lecture du stockage par image et par région. Les visuels ne
+     sont alors accessibles qu'à travers l'application. Le mode privé exige `@vercel/blob` 2 ou
+     supérieur ; les versions antérieures refusent `access: "private"` avant tout appel réseau.
+
+   Rien à déclarer dans les deux cas : le mode est découvert au premier dépôt. `BLOB_ACCESS` permet
+   de l'imposer, et l'autre mode reste tenté en secours plutôt que de bloquer la borne.
 3. **Une seule variable à ajouter à la main** :
 
    ```
