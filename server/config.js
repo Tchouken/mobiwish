@@ -82,19 +82,48 @@ const config = {
   strictSecret: bool(process.env.STRICT_SECRET, process.env.NODE_ENV === 'production'),
 };
 
-if (config.strictSecret && config.sessionSecret === 'dev-secret-change-me') {
-  throw new Error('SESSION_SECRET doit etre defini en production.');
-}
+/**
+ * Verifications de configuration. Sur un hebergement serverless, une base
+ * SQLite s'ecrirait dans un disque ephemere et non partage : les projets et
+ * les votes seraient perdus. Plutot que de planter au demarrage, on collecte
+ * ce qui manque — l'application repond alors une page d'installation qui dit
+ * exactement quoi ajouter (voir server/app.js).
+ */
+config.missing = [];
 
-// Garde-fou : en serverless, SQLite s'ecrirait dans un disque ephemere, non
-// partage entre instances — les projets et les votes seraient perdus.
 if (config.onVercel && config.database.driver === 'sqlite') {
-  throw new Error(
-    'Base non configuree : definissez DATABASE_URL (PostgreSQL) — SQLite ne peut pas etre utilise sur un hebergement serverless.'
-  );
+  config.missing.push({
+    key: 'DATABASE_URL',
+    label: 'Base de donnees PostgreSQL',
+    hint: 'Vercel → Storage → Create Database → Neon (ou Supabase). Utiliser la chaine avec pooling.',
+  });
 }
 if (config.onVercel && config.storage.driver === 'blob' && !config.storage.blobToken) {
-  throw new Error('Stockage non configure : BLOB_READ_WRITE_TOKEN est requis (Vercel Blob).');
+  config.missing.push({
+    key: 'BLOB_READ_WRITE_TOKEN',
+    label: 'Stockage des images',
+    hint: 'Vercel → Storage → Create → Blob. Le jeton est injecte automatiquement.',
+  });
+}
+if ((config.onVercel || config.strictSecret) && config.sessionSecret === 'dev-secret-change-me') {
+  config.missing.push({
+    key: 'SESSION_SECRET',
+    label: 'Secret de signature des sessions',
+    hint: 'Une chaine aleatoire de 32 caracteres ou plus, propre a l’evenement.',
+  });
+}
+if ((config.onVercel || config.strictSecret) && config.adminToken === 'admin') {
+  config.missing.push({
+    key: 'ADMIN_TOKEN',
+    label: 'Code d’acces a la console d’animation',
+    hint: 'Le code demande a l’ouverture de /admin.',
+  });
+}
+
+// Hors serverless, une configuration incomplete reste une erreur bloquante :
+// mieux vaut refuser de demarrer que servir un evenement mal configure.
+if (!config.onVercel && config.missing.length) {
+  throw new Error(`Configuration incomplete : ${config.missing.map((m) => m.key).join(', ')}.`);
 }
 
 module.exports = config;

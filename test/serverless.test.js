@@ -106,3 +106,34 @@ test('dialecte : les marqueurs ? deviennent $1, $2… pour PostgreSQL', () => {
   assert.equal(toPgPlaceholders('SELECT * FROM projects WHERE id = ?'), 'SELECT * FROM projects WHERE id = $1');
   assert.equal(toPgPlaceholders('SELECT 1'), 'SELECT 1');
 });
+
+test('hebergement incomplet : page d’installation au lieu d’un plantage', async (t) => {
+  const config = require('../server/config');
+  const { createApp } = require('../server/app');
+
+  const previous = config.missing;
+  config.missing = [{ key: 'DATABASE_URL', label: 'Base de donnees', hint: 'Vercel → Storage' }];
+  const app = createApp({ store: null, logger: { log() {}, warn() {}, error() {} } });
+  const server = app.listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    config.missing = previous;
+  });
+
+  const page = await fetch(`${base}/vote`, { headers: { Accept: 'text/html' } });
+  assert.equal(page.status, 503);
+  assert.match(await page.text(), /Configuration requise/);
+
+  const api = await fetch(`${base}/api/config`);
+  assert.equal(api.status, 503);
+  const payload = await api.json();
+  assert.equal(payload.error.code, 'setup_required');
+  assert.deepEqual(payload.error.missing.map((m) => m.key), ['DATABASE_URL']);
+
+  const health = await fetch(`${base}/healthz`);
+  assert.equal(health.status, 503);
+  assert.deepEqual((await health.json()).missing, ['DATABASE_URL']);
+});

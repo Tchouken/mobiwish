@@ -5,6 +5,7 @@ const express = require('express');
 const config = require('./config');
 const { EventHub } = require('./events');
 const { HttpError } = require('./util/validate');
+const { setupPage } = require('./services/setupPage');
 const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
 
@@ -24,13 +25,33 @@ function createApp({ store, hub = new EventHub(), logger = console, generate } =
   });
 
   app.get('/healthz', (req, res) =>
-    res.json({
-      ok: true,
+    res.status(config.missing.length ? 503 : 200).json({
+      ok: config.missing.length === 0,
       uptime: process.uptime(),
       database: config.database.driver,
       storage: config.storage.driver,
+      missing: config.missing.map((item) => item.key),
     })
   );
+
+  // Ressource obligatoire absente : on l'annonce clairement au lieu de servir
+  // une application qui perdrait les projets et les votes.
+  if (config.missing.length) {
+    app.use((req, res) => {
+      res.status(503).set('Cache-Control', 'no-store');
+      if (req.path.startsWith('/api/') || req.accepts(['html', 'json']) === 'json') {
+        return res.json({
+          error: {
+            code: 'setup_required',
+            message: 'Configuration incomplete de l’hebergement.',
+            missing: config.missing,
+          },
+        });
+      }
+      return res.type('html').send(setupPage(config.missing));
+    });
+    return app;
+  }
 
   app.use('/api/admin', adminRoutes({ store, hub }));
   app.use('/api', apiRoutes({ store, hub, logger, ...(generate ? { generate } : {}) }));
