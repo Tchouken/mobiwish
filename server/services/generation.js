@@ -1,14 +1,17 @@
 'use strict';
 
-const fs = require('fs/promises');
-const path = require('path');
 const config = require('../config');
 const { generateImage } = require('./imageProvider');
+const { saveImage } = require('./media');
 
 /**
- * Genere l'image d'un projet en tache de fond puis met a jour son statut.
- * La borne reste reactive : elle affiche un ecran d'attente et interroge
- * /api/projects/:id jusqu'au statut `ready`.
+ * Genere l'image d'un projet puis met a jour son statut.
+ *
+ * Deux declenchements possibles selon l'hebergement :
+ *   inline  — lance en tache de fond juste apres la creation (serveur durable) ;
+ *   request — declenche par un appel a POST /api/projects/:id/render, car une
+ *             fonction serverless est interrompue des qu'elle a repondu.
+ * Dans les deux cas la borne interroge /api/projects/:id jusqu'au statut `ready`.
  */
 async function runGeneration({ store, hub, project, logger = console }) {
   const start = Date.now();
@@ -25,27 +28,25 @@ async function runGeneration({ store, hub, project, logger = console }) {
       }
     }
 
-    const file = `${project.id}.${result.ext}`;
-    await fs.mkdir(config.mediaDir, { recursive: true });
-    await fs.writeFile(path.join(config.mediaDir, file), result.buffer);
+    const stored = await saveImage({
+      id: project.id,
+      buffer: result.buffer,
+      ext: result.ext,
+      mime: result.mime,
+    });
 
-    const updated = store.markProjectReady(project.id, {
-      imageFile: file,
-      imageMime: result.mime,
+    const updated = await store.markProjectReady(project.id, {
+      imageUrl: stored.url,
+      imageMime: stored.mime,
       provider: result.provider,
     });
 
     logger.log?.(`[image] projet ${project.id} pret en ${Date.now() - start} ms (${result.provider})`);
-    hub?.emit('project:ready', {
-      id: updated.id,
-      title: updated.title,
-      author: `${updated.first_name} ${String(updated.last_name || '').charAt(0)}.`,
-      imageUrl: `/media/${file}`,
-    });
+    hub?.emit('project:ready', { id: updated.id, title: updated.title, imageUrl: updated.image_url });
     return updated;
   } catch (err) {
     logger.error?.(`[image] echec definitif pour ${project.id}: ${err.message}`);
-    const failed = store.markProjectFailed(project.id, err.message);
+    const failed = await store.markProjectFailed(project.id, err.message);
     hub?.emit('project:failed', { id: project.id });
     return failed;
   }

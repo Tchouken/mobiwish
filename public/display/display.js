@@ -2,12 +2,13 @@
 (function () {
   'use strict';
 
-  const { api, subscribe, esc, el } = window.MW;
+  const { api, live, esc, el } = window.MW;
   const MEDALS = ['🥇', '🥈', '🥉'];
 
   async function refresh() {
+    let config = null;
     try {
-      const config = await api('/config', { token: null });
+      config = await api('/config', { token: null });
       el('event-name').textContent = config.eventName;
       el('vote-url').textContent = config.voteUrl.replace(/^https?:\/\//, '');
       el('c-projects').textContent = config.stats.projects;
@@ -29,6 +30,8 @@
         el('veil').classList.remove('hidden');
       }
     }
+
+    return config;
   }
 
   function renderBoard(rows) {
@@ -62,18 +65,22 @@
       .join('');
   }
 
-  const live = el('live');
-  subscribe({
-    open: () => { live.classList.remove('is-off'); live.lastChild.textContent = ' connecté'; },
-    error: () => { live.classList.add('is-off'); live.lastChild.textContent = ' reconnexion…'; },
-    'project:ready': refresh,
-    'project:updated': refresh,
-    'project:deleted': refresh,
-    'vote:cast': refresh,
-    'settings:updated': refresh,
-    'event:reset': refresh,
-  });
+  const badge = el('live');
+  const mark = (ok, label) => {
+    badge.classList.toggle('is-off', !ok);
+    badge.lastChild.textContent = ' ' + label;
+  };
 
-  refresh();
-  setInterval(refresh, 20000); // filet de securite si le flux SSE est coupe
+  (async function start() {
+    const config = await refresh();
+    mark(true, config && config.realtime === 'sse' ? 'connecté' : 'mise à jour automatique');
+    live(refresh, {
+      mode: config ? config.realtime : 'sse',
+      intervalMs: config ? config.pollIntervalMs : 5000,
+      onOpen: () => mark(true, 'connecté'),
+      onError: () => mark(false, 'reconnexion…'),
+    });
+    // Filet de securite si le flux est coupe sans erreur remontee.
+    setInterval(refresh, 30000);
+  })();
 })();

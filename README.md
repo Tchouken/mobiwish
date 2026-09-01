@@ -38,11 +38,59 @@ Jeu de démonstration pour une répétition (projets + votes fictifs) :
 npm run seed 8
 ```
 
-Tests (parcours borne, règles de vote, classement, administration, flux temps réel) :
+Tests (parcours borne, règles de vote, classement, administration, flux temps réel, mode
+serverless, et exécution de **toutes les requêtes sur un vrai PostgreSQL** via PGlite) :
 
 ```bash
 npm test
 ```
+
+## Déploiement sur Vercel
+
+Une fonction serverless n'a ni disque persistant ni processus qui survit à la réponse : il faut
+donc une base gérée et un stockage objet. Le reste est automatique.
+
+1. **Base PostgreSQL** — dans le projet Vercel : *Storage → Create Database → Neon* (ou Supabase).
+   L'intégration injecte `DATABASE_URL`. Utiliser la chaîne **avec pooling**.
+2. **Stockage des images** — *Storage → Create → Blob*. L'intégration injecte `BLOB_READ_WRITE_TOKEN`.
+3. **Variables d'environnement** à ajouter à la main :
+
+   ```
+   SESSION_SECRET=<chaîne aléatoire de 32+ caractères>
+   ADMIN_TOKEN=<code d’accès admin>
+   PUBLIC_URL=https://<votre-domaine>
+   IMAGE_PROVIDER=openai
+   OPENAI_API_KEY=<clé OpenAI>
+   ```
+
+4. **Schéma de la base** : `npm run migrate` en local avec `DATABASE_URL` pointant sur la base de
+   production, ou laisser `AUTO_MIGRATE=1` créer les tables au premier démarrage.
+5. **Déployer** : `vercel --prod` (ou connecter le dépôt GitHub au projet).
+
+`vercel.json` route `/api/*` vers la fonction Express (`api/index.js`, `maxDuration` 300 s pour
+couvrir la génération d'image) et sert les quatre interfaces en statique depuis le CDN.
+
+Garde-fous : l'application **refuse de démarrer** sur Vercel sans `DATABASE_URL` ou sans
+`BLOB_READ_WRITE_TOKEN`, plutôt que d'écrire dans un disque éphémère et de perdre les projets.
+
+### Tenue de charge
+
+| Charge | Comportement |
+|---|---|
+| Galerie et classement | mis en cache 3 s par le CDN (`s-maxage`) : 1 000 mobiles qui rafraîchissent ne déclenchent que quelques requêtes vers la base |
+| Vote | une écriture par participant, protégée par la clé primaire de `ballots` — un double envoi simultané renvoie `409`, jamais deux bulletins |
+| Génération d'image | une fonction par projet, verrou en base (`claimProjectForRender`) : deux appels concurrents ne produisent jamais deux images |
+| Base | quelques milliers de lignes sur la journée : très en deçà de ce qu'encaisse la plus petite offre Neon |
+
+**Le facteur limitant n'est pas le serveur, c'est le nombre de bornes.** Un passage complet
+(identification + rédaction + génération + écran de résultat) prend 1 min 30 à 2 min 30, soit
+**25 à 35 projets par heure et par borne**, ~250 sur une journée de 8 h. Pour viser 1 000 projets,
+prévoir **4 bornes** en parallèle (la WebApp de vote, elle, absorbe sans difficulté 1 000 votants).
+
+Ordre de grandeur du coût de génération, à confirmer par un test réel avant l'événement (les
+tarifs des modèles d'images évoluent, et `OPENAI_IMAGE_QUALITY` change tout) : en qualité
+standard, compter quelques dizaines d'euros pour 1 000 images ; en qualité haute, plusieurs
+centaines. Le mode `mock` permet de répéter le dispositif sans dépenser un centime.
 
 ## Configuration (`.env`)
 
@@ -53,7 +101,14 @@ npm test
 | `SESSION_SECRET` | Secret de signature des sessions participants — **obligatoire en production** |
 | `ADMIN_TOKEN` | Code d’accès à `/admin` |
 | `KIOSK_TOKEN` | Code d’accès optionnel à la borne (`/kiosk?kiosk=CODE`, mémorisé sur l’iPad) |
-| `IMAGE_PROVIDER` | `mock` (générateur local, sans clé) ou `openai` (API images, `gpt-image-1`) |
+| `DB_DRIVER` | `sqlite` (défaut) ou `postgres` — déduit automatiquement de `DATABASE_URL` |
+| `DATABASE_URL` | Chaîne PostgreSQL **avec pooling** (Neon, Supabase, RDS…) |
+| `STORAGE_DRIVER` | `disk` (défaut) ou `blob` (Vercel Blob) |
+| `RENDER_MODE` | `inline` (serveur durable) ou `request` (serverless) |
+| `REALTIME` | `sse` (serveur durable) ou `poll` (serverless) |
+| `PUBLIC_CACHE_SECONDS` | Durée de cache CDN des réponses publiques |
+| `IMAGE_PROVIDER` | `mock` (générateur local, sans clé) ou `openai` (API images) |
+| `OPENAI_IMAGE_QUALITY` | `low`, `medium` ou `high` — pèse directement sur le coût et la durée |
 | `OPENAI_API_KEY` | Clé API si `IMAGE_PROVIDER=openai` |
 | `IMAGE_STYLE` | Style graphique appliqué à toutes les images générées |
 | `IMAGE_FALLBACK_MOCK` | `1` : bascule automatiquement sur le générateur local si l’API échoue le jour J |
@@ -120,6 +175,8 @@ Publique :
 | `GET`  | `/api/events` | Flux temps réel (SSE) |
 | `GET`  | `/api/qr.svg` | QR code vers la page de vote |
 
+| `POST` | `/api/projects/:id/render` | Génère l’image (hébergement serverless) — idempotent |
+
 Administration (en-tête `x-admin-token`) : `GET /api/admin/state`, `PUT /api/admin/settings`,
 `POST /api/admin/projects/:id/visibility`, `DELETE /api/admin/projects/:id`,
 `GET /api/admin/export.csv`, `POST /api/admin/reset`.
@@ -127,13 +184,16 @@ Administration (en-tête `x-admin-token`) : `GET /api/admin/state`, `PUT /api/ad
 ## Structure
 
 ```
-server/            API Express, SQLite, génération d’images, flux SSE
+api/index.js       Point d’entrée serverless (Vercel)
+vercel.json        Routage, durée max de fonction, en-têtes de cache
+server/
+  db/              driver.js (SQLite | PostgreSQL) · schema.js · index.js
   routes/          api.js (public) · admin.js (console)
-  services/        store.js · imageProvider.js · generation.js · prompt.js · serialize.js
+  services/        store.js · imageProvider.js · generation.js · media.js · prompt.js · serialize.js
   util/            auth.js (jetons signés) · validate.js · rateLimit.js · ids.js
 public/            Interfaces sans dépendance : kiosk · vote · display · admin · shared
-scripts/seed.js    Jeu de démonstration
-test/              Tests d’intégration (node:test)
+scripts/           migrate.js (schéma) · seed.js (jeu de démonstration)
+test/              Tests d’intégration, dont l’exécution de toutes les requêtes sur PostgreSQL
 ```
 
 ## Recommandations d’exploitation

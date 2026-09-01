@@ -5,14 +5,12 @@
  * Jeu de donnees de demonstration (repetition avant l'evenement).
  * Usage : npm run seed -- [nombre-de-projets]
  */
-
-const { open } = require('../server/db');
-const { Store } = require('../server/services/store');
+const { getStore, closeStore } = require('../server/db');
 const { buildPrompt, buildTitle } = require('../server/services/prompt');
 const { runGeneration } = require('../server/services/generation');
 
 const IDEAS = [
-  'Un atelier de reparation ouvert a tous les collaborateurs, ou chaque objet du bureau reçoit une seconde vie avant d achat neuf.',
+  'Un atelier de reparation ouvert a tous les collaborateurs, ou chaque objet du bureau reçoit une seconde vie avant achat neuf.',
   'Une place de marche interne des competences : chacun propose deux heures par mois pour aider une autre equipe.',
   'Des bureaux modulables qui se reconfigurent selon les projets du jour grace a un plan partage en temps reel.',
   'Une IA de mise en relation locale qui rapproche vendeurs et acheteurs du meme quartier pour supprimer les livraisons longues.',
@@ -31,44 +29,45 @@ const NAMES = [
 
 async function main() {
   const count = Math.min(Number(process.argv[2]) || 6, IDEAS.length);
-  const db = open();
-  const store = new Store(db);
-  const question = store.setting('question', '');
+  const store = await getStore();
+  const question = await store.setting('question', '');
   const created = [];
 
   for (let i = 0; i < count; i += 1) {
     const [firstName, lastName] = NAMES[i % NAMES.length];
     const answer = IDEAS[i % IDEAS.length];
-    const participant = store.upsertParticipant({
+    const participant = await store.upsertParticipant({
       firstName,
       lastName,
       email: `${firstName}.${lastName}${i}@demo.local`.toLowerCase(),
     });
-    const project = store.createProject({
+    const project = await store.createProject({
       participantId: participant.id,
       question,
       answer,
       title: buildTitle(answer),
       prompt: buildPrompt(answer, { question }),
+      status: 'rendering',
     });
     await runGeneration({ store, hub: null, project });
     created.push({ project, participant });
   }
 
   // Quelques bulletins pour animer le classement.
-  created.forEach((entry, index) => {
+  for (let index = 0; index < created.length; index += 1) {
+    const entry = created[index];
     const picks = created
       .filter((other) => other.project.id !== entry.project.id)
       .slice(0, ((index * 2) % 3) + 1)
       .map((other) => other.project.id);
-    if (picks.length && !store.ballotOf(entry.participant.id)) {
-      store.castBallot(entry.participant.id, picks);
+    if (picks.length && !(await store.ballotOf(entry.participant.id))) {
+      await store.castBallot(entry.participant.id, picks);
     }
-  });
+  }
 
   console.log(`${count} projets de demonstration crees.`);
-  console.table(store.stats());
-  db.close();
+  console.table(await store.stats());
+  await closeStore();
 }
 
 main().catch((err) => {

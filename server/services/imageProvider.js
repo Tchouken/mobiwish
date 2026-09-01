@@ -95,6 +95,7 @@ async function openaiGenerate(prompt) {
         prompt,
         n: 1,
         size: config.image.openaiSize,
+        quality: config.image.openaiQuality,
       }),
       signal: controller.signal,
     });

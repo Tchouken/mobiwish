@@ -63,6 +63,38 @@
     return { close() { closed = true; source?.close(); } };
   }
 
+  /**
+   * Mises a jour temps reel, quel que soit l'hebergement :
+   *   - serveur durable  : flux SSE (/api/events) ;
+   *   - serverless        : interrogation periodique de l'API.
+   * La page fournit un seul rappel `onChange`, appele a chaque changement.
+   */
+  function live(onChange, options = {}) {
+    const mode = options.mode || 'sse';
+    const intervalMs = options.intervalMs || 5000;
+
+    if (mode !== 'sse') {
+      const timer = setInterval(onChange, intervalMs);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) onChange();
+      });
+      return { close() { clearInterval(timer); } };
+    }
+
+    return subscribe({
+      open: options.onOpen,
+      error: options.onError,
+      'project:created': onChange,
+      'project:ready': onChange,
+      'project:failed': onChange,
+      'project:updated': onChange,
+      'project:deleted': onChange,
+      'vote:cast': onChange,
+      'settings:updated': onChange,
+      'event:reset': onChange,
+    });
+  }
+
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
   ));
@@ -85,5 +117,5 @@
     return { reset, stop: () => clearTimeout(handle) };
   }
 
-  global.MW = { api, store, subscribe, esc, el, plural, idleTimer };
+  global.MW = { api, store, subscribe, live, esc, el, plural, idleTimer };
 })(window);

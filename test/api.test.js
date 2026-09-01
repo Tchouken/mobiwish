@@ -23,7 +23,7 @@ test('identification : cree puis reutilise le participant selon l’e-mail', asy
   });
   assert.equal(second.status, 200);
   assert.equal(second.body.participant.id, first.body.participant.id);
-  assert.equal(server.store.stats().participants, 1);
+  assert.equal((await server.store.stats()).participants, 1);
 });
 
 test('identification : refuse un e-mail invalide et un prenom vide', async (t) => {
@@ -51,7 +51,8 @@ test('borne : cree un projet, genere l’image et l’ajoute a la galerie', asyn
   const { token } = await identify(server);
   const created = await createProject(server, token);
   assert.equal(created.status, 201);
-  assert.equal(created.body.project.status, 'generating');
+  // Hebergement durable : la generation demarre des la creation.
+  assert.equal(created.body.project.status, 'rendering');
 
   const detail = await server.request(`/api/projects/${created.body.project.id}`);
   assert.equal(detail.body.project.status, 'ready');
@@ -81,7 +82,7 @@ test('borne fermee : la creation de projet est refusee', async (t) => {
   const server = await startServer();
   t.after(() => server.close());
 
-  server.store.setSettings({ kiosk_open: '0' });
+  await server.store.setSettings({ kiosk_open: '0' });
   const { token } = await identify(server);
   const res = await server.request('/api/projects', {
     method: 'POST',

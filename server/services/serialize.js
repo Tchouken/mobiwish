@@ -8,7 +8,7 @@ function displayName(row) {
 }
 
 function imageUrl(row) {
-  return row.image_file ? `/media/${row.image_file}` : null;
+  return row.image_url || null;
 }
 
 function publicProject(row, { showVotes = true } = {}) {

@@ -4,15 +4,13 @@ const path = require('path');
 const express = require('express');
 const config = require('./config');
 const { EventHub } = require('./events');
-const { Store } = require('./services/store');
 const { HttpError } = require('./util/validate');
 const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
-function createApp({ db, hub = new EventHub(), logger = console, generate } = {}) {
-  const store = new Store(db);
+function createApp({ store, hub = new EventHub(), logger = console, generate } = {}) {
   const app = express();
 
   app.set('trust proxy', true);
@@ -25,18 +23,24 @@ function createApp({ db, hub = new EventHub(), logger = console, generate } = {}
     next();
   });
 
-  app.get('/healthz', (req, res) => res.json({ ok: true, uptime: process.uptime() }));
+  app.get('/healthz', (req, res) =>
+    res.json({
+      ok: true,
+      uptime: process.uptime(),
+      database: config.database.driver,
+      storage: config.storage.driver,
+    })
+  );
 
   app.use('/api/admin', adminRoutes({ store, hub }));
   app.use('/api', apiRoutes({ store, hub, logger, ...(generate ? { generate } : {}) }));
 
-  // Images generees : immuables une fois ecrites (nom de fichier = id du projet)
-  app.use(
-    '/media',
-    express.static(config.mediaDir, { immutable: true, maxAge: '7d', fallthrough: true, index: false })
-  );
+  // Images generees : servies localement en installation sur place ; en mode
+  // `blob` elles sont livrees directement par le stockage objet.
+  if (config.storage.driver === 'disk') {
+    app.use('/media', express.static(config.mediaDir, { immutable: true, maxAge: '7d', index: false }));
+  }
 
-  // Interfaces
   // `redirect: false` : /kiosk, /vote… sont servis par les routes ci-dessous,
   // sans redirection vers le dossier du meme nom.
   app.use(express.static(PUBLIC_DIR, { index: false, redirect: false, extensions: ['html'] }));

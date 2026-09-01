@@ -29,15 +29,15 @@ test('vote : un bulletin unique par participant', async (t) => {
   assert.equal(second.status, 409);
   assert.equal(second.body.error.code, 'already_voted');
 
-  assert.equal(server.store.stats().votes, 2);
-  assert.equal(server.store.stats().voters, 1);
+  assert.equal((await server.store.stats()).votes, 2);
+  assert.equal((await server.store.stats()).voters, 1);
 });
 
 test('vote : la limite de selections est appliquee', async (t) => {
   const server = await startServer();
   t.after(() => server.close());
 
-  server.store.setSettings({ votes_per_participant: '2' });
+  await server.store.setSettings({ votes_per_participant: '2' });
   const projects = await seedProjects(server, 3);
   const { token } = await identify(server);
 
@@ -66,7 +66,7 @@ test('vote : les doublons dans un bulletin ne comptent qu’une fois', async (t)
     body: { projectIds: [project.id, project.id, project.id] },
   });
   assert.equal(res.status, 201);
-  assert.equal(server.store.stats().votes, 1);
+  assert.equal((await server.store.stats()).votes, 1);
 });
 
 test('vote : on ne peut pas voter pour son propre projet, sauf reglage contraire', async (t) => {
@@ -79,7 +79,7 @@ test('vote : on ne peut pas voter pour son propre projet, sauf reglage contraire
   assert.equal(blocked.status, 400);
   assert.equal(blocked.body.error.code, 'self_vote');
 
-  server.store.setSettings({ allow_self_vote: '1' });
+  await server.store.setSettings({ allow_self_vote: '1' });
   const allowed = await server.request('/api/votes', { method: 'POST', token: own.token, body: { projectIds: [own.id] } });
   assert.equal(allowed.status, 201);
 });
@@ -95,12 +95,12 @@ test('vote : refuse un projet masque ou inexistant, et les votes fermes', async 
   assert.equal(ghost.status, 400);
   assert.equal(ghost.body.error.code, 'invalid_project');
 
-  server.store.setProjectHidden(project.id, true);
+  await server.store.setProjectHidden(project.id, true);
   const hidden = await server.request('/api/votes', { method: 'POST', token, body: { projectIds: [project.id] } });
   assert.equal(hidden.status, 400);
 
-  server.store.setProjectHidden(project.id, false);
-  server.store.setSettings({ voting_open: '0' });
+  await server.store.setProjectHidden(project.id, false);
+  await server.store.setSettings({ voting_open: '0' });
   const closed = await server.request('/api/votes', { method: 'POST', token, body: { projectIds: [project.id] } });
   assert.equal(closed.status, 409);
   assert.equal(closed.body.error.code, 'voting_closed');
@@ -131,7 +131,7 @@ test('classement : masque avant la reveal', async (t) => {
   const server = await startServer();
   t.after(() => server.close());
 
-  server.store.setSettings({ results_public: '0' });
+  await server.store.setSettings({ results_public: '0' });
   const res = await server.request('/api/leaderboard');
   assert.equal(res.status, 403);
   assert.equal(res.body.error.code, 'results_hidden');

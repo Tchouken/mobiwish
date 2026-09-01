@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/healthz", "destination": "/api/index" },
+    { "source": "/kiosk", "destination": "/kiosk/index.html" },
+    { "source": "/vote", "destination": "/vote/index.html" },
+    { "source": "/display", "destination": "/display/index.html" },
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/", "destination": "/vote/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(kiosk|vote|display|admin)/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/shared/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=300" }]
+    }
+  ]
+}

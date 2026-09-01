@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, store, subscribe, esc, el, plural } = window.MW;
+  const { api, store, live, esc, el, plural } = window.MW;
 
   const state = {
     config: null,
@@ -252,29 +252,16 @@
   el('btn-ranking').addEventListener('click', openRanking);
 
   // --- Temps reel ---------------------------------------------------------
-  subscribe({
-    'project:ready': refreshProjects,
-    'project:updated': refreshProjects,
-    'project:deleted': refreshProjects,
-    'vote:cast': () => {
-      refreshProjects();
-      if (!el('sheet-ranking').classList.contains('hidden')) refreshRanking();
-    },
-    'settings:updated': async () => {
-      await refreshConfig();
-      render();
-    },
-    'event:reset': async () => {
-      store.token = null;
-      state.selected.clear();
-      state.hasVoted = false;
-      await refreshProjects();
-    },
-  });
+  async function onChange() {
+    await refreshConfig();
+    await refreshProjects();
+    if (!el('sheet-ranking').classList.contains('hidden')) await refreshRanking();
+  }
 
   (async function init() {
     await refreshConfig();
     await refreshMe();
     await refreshProjects();
+    live(onChange, { mode: state.config.realtime, intervalMs: state.config.pollIntervalMs });
   })();
 })();

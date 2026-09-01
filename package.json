@@ -9,13 +9,22 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node --test test/*.test.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "migrate": "node scripts/migrate.js",
+    "vercel-build": "echo \"aucune etape de build : application Node + fichiers statiques\""
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
+    "@vercel/blob": "^0.27.0",
     "better-sqlite3": "^11.10.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "pg": "^8.13.1",
     "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
   }
 }

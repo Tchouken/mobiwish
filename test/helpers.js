@@ -9,21 +9,36 @@ process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-secret';
 process.env.ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'test-admin';
 process.env.IMAGE_PROVIDER = 'mock';
 
-const { open } = require('../server/db');
+const config = require('../server/config');
+const { createDriver, ensureSchema } = require('../server/db/driver');
+const { Store } = require('../server/services/store');
 const { createApp } = require('../server/app');
 const { EventHub } = require('../server/events');
 const { runGeneration } = require('../server/services/generation');
 
-const silent = { log() {}, warn() {}, error() {}, };
+const silent = { log() {}, warn() {}, error() {} };
 
-/** Demarre une instance isolee (base temporaire) et renvoie un client HTTP. */
-async function startServer({ generate } = {}) {
+/**
+ * Demarre une instance isolee (base temporaire) et renvoie un client HTTP.
+ * `renderMode` permet de rejouer le comportement serverless : la generation
+ * n'a lieu que lorsque la borne appelle /render.
+ */
+async function startServer({ generate, renderMode = 'inline', realtime = 'sse' } = {}) {
+  const previous = { renderMode: config.runtime.renderMode, realtime: config.runtime.realtime };
+  config.runtime.renderMode = renderMode;
+  config.runtime.realtime = realtime;
+
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mobiwish-test-'));
-  const db = open(path.join(dir, 'test.sqlite'));
+  const driver = createDriver({ ...config, database: { ...config.database, driver: 'sqlite' }, dbFile: path.join(dir, 'test.sqlite') });
+  await ensureSchema(driver);
+
+  const store = new Store(driver, config.defaults);
+  await store.seedSettings();
+
   const hub = new EventHub();
   const pending = [];
 
-  // Par defaut : generation synchrone attendable, pour des tests deterministes.
+  // Par defaut : generation attendable, pour des tests deterministes.
   const generator =
     generate ||
     ((args) => {
@@ -32,7 +47,7 @@ async function startServer({ generate } = {}) {
       return promise;
     });
 
-  const app = createApp({ db, hub, logger: silent, generate: generator });
+  const app = createApp({ store, hub, logger: silent, generate: generator });
   const server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -55,15 +70,17 @@ async function startServer({ generate } = {}) {
   return {
     base,
     request,
-    store: app.locals.store,
+    store,
     hub,
     settled: () => Promise.allSettled(pending),
     async close() {
       await Promise.allSettled(pending);
       hub.close();
       await new Promise((resolve) => server.close(resolve));
-      db.close();
+      await driver.close();
       fs.rmSync(dir, { recursive: true, force: true });
+      config.runtime.renderMode = previous.renderMode;
+      config.runtime.realtime = previous.realtime;
     },
   };
 }
@@ -83,7 +100,11 @@ async function identify(server, overrides = {}) {
   return res.body;
 }
 
-async function createProject(server, token, answer = 'Une plateforme interne qui recycle les objets du bureau entre collaborateurs.') {
+async function createProject(
+  server,
+  token,
+  answer = 'Une plateforme interne qui recycle les objets du bureau entre collaborateurs.'
+) {
   const res = await server.request('/api/projects', { method: 'POST', token, body: { answer } });
   await server.settled();
   return res;

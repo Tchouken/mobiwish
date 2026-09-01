@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, subscribe, esc, el } = window.MW;
+  const { api, live, esc, el } = window.MW;
   const TOKEN_KEY = 'mobiwish.admin';
 
   let adminToken = sessionStorage.getItem(TOKEN_KEY) || '';
@@ -175,12 +175,14 @@
   });
 
   // --- Temps reel ---------------------------------------------------------
-  subscribe({
-    'project:created': () => adminToken && load().catch(() => {}),
-    'project:ready': () => adminToken && load().catch(() => {}),
-    'project:failed': () => adminToken && load().catch(() => {}),
-    'vote:cast': () => adminToken && load().catch(() => {}),
-  });
+  api('/config', { token: null })
+    .then((config) => {
+      live(() => { if (adminToken) load().catch(() => {}); }, {
+        mode: config.realtime,
+        intervalMs: Math.max(config.pollIntervalMs || 5000, 8000),
+      });
+    })
+    .catch(() => {});
 
   // Session deja ouverte dans cet onglet
   if (adminToken) {

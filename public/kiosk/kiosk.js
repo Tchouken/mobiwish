@@ -111,13 +111,25 @@
     show('loading');
 
     try {
-      const { project } = await api('/projects', {
+      const { project, renderMode } = await api('/projects', {
         method: 'POST',
         token: state.token,
         headers: kioskToken ? { 'x-kiosk-token': kioskToken } : {},
         body: { answer },
       });
       state.project = project;
+
+      // Hebergement serverless : la generation est declenchee par cet appel,
+      // qui repond une fois l'image prete. L'interrogation ci-dessous sert de
+      // filet si la requete est coupee en route.
+      if ((renderMode || state.config?.renderMode) === 'request') {
+        api(`/projects/${project.id}/render`, {
+          method: 'POST',
+          token: state.token,
+          headers: kioskToken ? { 'x-kiosk-token': kioskToken } : {},
+        }).catch(() => {});
+      }
+
       await waitForImage(project.id);
     } catch (err) {
       showError('answer-error', err.message);
