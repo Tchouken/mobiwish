@@ -13,6 +13,59 @@
     },
   };
 
+  /**
+   * Les quatre interfaces sont servies par le CDN : elles s'affichent meme
+   * quand l'hebergement n'est pas encore configure. Plutot que de laisser
+   * l'utilisateur buter sur un formulaire qui ne peut pas repondre, on
+   * recouvre la page par la liste de ce qui reste a brancher.
+   */
+  function showSetupNotice(missing) {
+    if (document.getElementById('mw-setup')) return;
+
+    const items = (missing || [])
+      .map(
+        (item) =>
+          `<li><code>${esc(item.key)}</code><b>${esc(item.label)}</b><span>${esc(item.hint)}</span></li>`
+      )
+      .join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'mw-setup';
+    overlay.innerHTML = `
+      <style>
+        #mw-setup {
+          position: fixed; inset: 0; z-index: 9999; overflow-y: auto;
+          background: #f6f2ed; color: #17140f; padding: 2rem 1.25rem;
+          font: 16px/1.55 "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
+        }
+        #mw-setup .box { max-width: 44rem; margin-inline: auto; background: #fff; border-radius: 20px;
+          padding: 1.8rem clamp(1.1rem, 4vw, 2.2rem); box-shadow: 0 10px 34px rgba(23, 20, 15, .09); }
+        #mw-setup .tag { display: inline-block; background: #fff1e7; color: #d95300; font-weight: 700;
+          font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; padding: .25rem .7rem; border-radius: 999px; }
+        #mw-setup h2 { font-size: clamp(1.3rem, 4vw, 1.8rem); letter-spacing: -.02em; margin: .6rem 0 .5rem; }
+        #mw-setup p { color: #5c5147; margin: 0 0 1rem; }
+        #mw-setup ul { list-style: none; margin: 0 0 1.2rem; padding: 0; display: grid; gap: .6rem; }
+        #mw-setup li { display: grid; gap: .1rem; background: #f9f5f0; border-left: 4px solid #ff6e14;
+          border-radius: 10px; padding: .7rem .9rem; }
+        #mw-setup code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .84rem;
+          color: #d95300; font-weight: 700; }
+        #mw-setup b { font-size: .96rem; }
+        #mw-setup span { font-size: .86rem; color: #5c5147; }
+        #mw-setup .fine { font-size: .84rem; color: #8d8175; margin: 0; }
+      </style>
+      <div class="box">
+        <span class="tag">Configuration requise</span>
+        <h2>Cette interface ne peut pas encore fonctionner</h2>
+        <p>L’application est bien déployée, mais il lui manque les ressources ci-dessous.
+           Aucun code d’accès ne pourra fonctionner tant qu’elles ne sont pas branchées.</p>
+        <ul>${items || '<li><b>Ressource d’hébergement manquante</b></li>'}</ul>
+        <p class="fine">Une fois ajoutées dans les réglages du projet, redéployez : cette page laissera
+           place à la borne, à la WebApp de vote et au classement.</p>
+      </div>`;
+
+    document.body.appendChild(overlay);
+  }
+
   async function api(path, { method = 'GET', body, token, headers = {} } = {}) {
     const auth = token === undefined ? store.token : token;
     const res = await fetch(`/api${path}`, {
@@ -27,6 +80,7 @@
 
     const payload = res.status === 204 ? {} : await res.json().catch(() => ({}));
     if (!res.ok) {
+      if (payload?.error?.code === 'setup_required') showSetupNotice(payload.error.missing);
       const err = new Error(payload?.error?.message || `Erreur ${res.status}`);
       err.code = payload?.error?.code || 'http_error';
       err.status = res.status;
@@ -117,5 +171,5 @@
     return { reset, stop: () => clearTimeout(handle) };
   }
 
-  global.MW = { api, store, subscribe, live, esc, el, plural, idleTimer };
+  global.MW = { api, store, subscribe, live, esc, el, plural, idleTimer, showSetupNotice };
 })(window);
