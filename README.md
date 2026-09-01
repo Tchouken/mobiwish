@@ -65,7 +65,14 @@ donc une base gérée et un stockage objet. Le reste est automatique.
 
 4. **Schéma de la base** : `npm run migrate` en local avec `DATABASE_URL` pointant sur la base de
    production, ou laisser `AUTO_MIGRATE=1` créer les tables au premier démarrage.
-5. **Déployer** : `vercel --prod` (ou connecter le dépôt GitHub au projet).
+5. **Déployer** : `vercel --prod` (ou connecter le dépôt GitHub au projet — chaque push sur la
+   branche de production déclenche alors un déploiement).
+6. **Vérifier** : `npm run check -- https://votre-domaine` passe en revue l'application en ligne
+   (base, stockage, interfaces, QR code, protection de la console) et sort en erreur s'il reste
+   quelque chose à corriger.
+
+Tant qu'une ressource obligatoire manque, l'application sert une page « Configuration requise »
+qui liste précisément ce qui reste à brancher — au lieu de planter avec une erreur opaque.
 
 `vercel.json` route `/api/*` vers la fonction Express (`api/index.js`, `maxDuration` 300 s pour
 couvrir la génération d'image) et sert les quatre interfaces en statique depuis le CDN.
