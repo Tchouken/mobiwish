@@ -9,6 +9,7 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/healthz", "destination": "/api/index" },
+    { "source": "/media/(.*)", "destination": "/api/index" },
     { "source": "/kiosk", "destination": "/kiosk/index.html" },
     { "source": "/vote", "destination": "/vote/index.html" },
     { "source": "/display", "destination": "/display/index.html" },
