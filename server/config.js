@@ -41,6 +41,10 @@ const config = {
   storage: {
     driver: storageDriver,
     blobToken: process.env.BLOB_READ_WRITE_TOKEN || '',
+    // Un store Vercel Blob est cree public ou prive, et ne change pas ensuite.
+    // En prive, les fichiers ne sont pas joignables directement par un
+    // navigateur : l'application les sert elle-meme (voir /media).
+    blobAccess: (process.env.BLOB_ACCESS || 'public').toLowerCase() === 'private' ? 'private' : 'public',
   },
 
   // Serverless : pas de tache de fond apres la reponse, et pas de flux SSE

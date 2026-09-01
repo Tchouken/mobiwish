@@ -53,6 +53,11 @@ donc une base gérée et un stockage objet. Le reste est automatique.
 1. **Base PostgreSQL** — dans le projet Vercel : *Storage → Create Database → Neon* (ou Supabase).
    L'intégration injecte `DATABASE_URL`. Utiliser la chaîne **avec pooling**.
 2. **Stockage des images** — *Storage → Create → Blob*. L'intégration injecte `BLOB_READ_WRITE_TOKEN`.
+   Un store Blob est créé **public** ou **privé**, et ce choix ne se modifie plus ensuite :
+   - **public** : les images sont servies directement par le CDN de Vercel. Rien à configurer.
+   - **privé** : ajouter `BLOB_ACCESS=private`. L'application relaie alors chaque image derrière sa
+     propre adresse (`/media/…`), avec un cache CDN permanent — une seule lecture du stockage par
+     image et par région. Les visuels ne sont alors accessibles qu'à travers l'application.
 3. **Variables d'environnement** à ajouter à la main :
 
    ```
@@ -111,6 +116,7 @@ centaines. Le mode `mock` permet de répéter le dispositif sans dépenser un ce
 | `DB_DRIVER` | `sqlite` (défaut) ou `postgres` — déduit automatiquement de `DATABASE_URL` |
 | `DATABASE_URL` | Chaîne PostgreSQL **avec pooling** (Neon, Supabase, RDS…) |
 | `STORAGE_DRIVER` | `disk` (défaut) ou `blob` (Vercel Blob) |
+| `BLOB_ACCESS` | `public` (défaut) ou `private`, selon le store Blob créé |
 | `RENDER_MODE` | `inline` (serveur durable) ou `request` (serverless) |
 | `REALTIME` | `sse` (serveur durable) ou `poll` (serverless) |
 | `PUBLIC_CACHE_SECONDS` | Durée de cache CDN des réponses publiques |

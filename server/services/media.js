@@ -19,20 +19,40 @@ async function saveToDisk({ id, buffer, ext, mime }) {
   return { url: `/media/${file}`, mime };
 }
 
+/** Chemin du fichier dans le store : stable, derive de l'identifiant du projet. */
+const blobPath = (file) => `projects/${file}`;
+
 async function saveToBlob({ id, buffer, ext, mime }) {
   const { put } = require('@vercel/blob');
   const token = config.storage.blobToken;
-  const result = await put(`projects/${id}.${ext}`, buffer, {
-    access: 'public',
+  const access = config.storage.blobAccess;
+  const file = `${id}.${ext}`;
+
+  const result = await put(blobPath(file), buffer, {
+    access,
     contentType: mime,
     addRandomSuffix: false,
+    cacheControlMaxAge: 31536000,
     ...(token ? { token } : {}),
   });
-  return { url: result.url, mime };
+
+  // Store public : l'URL renvoyee est servie directement par le CDN de Vercel.
+  // Store prive : elle exige un jeton, donc inutilisable dans une balise
+  // <img> — l'application relaie le fichier derriere sa propre adresse.
+  return { url: access === 'private' ? `/media/${file}` : result.url, mime };
+}
+
+/** Lit un fichier du store prive et le renvoie sous forme de flux. */
+async function readPrivateBlob(file) {
+  const { get } = require('@vercel/blob');
+  const token = config.storage.blobToken;
+  const result = await get(blobPath(file), { access: 'private', ...(token ? { token } : {}) });
+  if (!result || result.statusCode !== 200) return null;
+  return { stream: result.stream, mime: result.blob?.contentType || 'application/octet-stream' };
 }
 
 async function saveImage(payload) {
   return config.storage.driver === 'blob' ? saveToBlob(payload) : saveToDisk(payload);
 }
 
-module.exports = { saveImage };
+module.exports = { saveImage, readPrivateBlob };

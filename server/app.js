@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const { Readable } = require('stream');
 const express = require('express');
 const config = require('./config');
 const { EventHub } = require('./events');
@@ -8,6 +9,7 @@ const { HttpError } = require('./util/validate');
 const { setupPage } = require('./services/setupPage');
 const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
+const { readPrivateBlob } = require('./services/media');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -56,10 +58,28 @@ function createApp({ store, hub = new EventHub(), logger = console, generate } =
   app.use('/api/admin', adminRoutes({ store, hub }));
   app.use('/api', apiRoutes({ store, hub, logger, ...(generate ? { generate } : {}) }));
 
-  // Images generees : servies localement en installation sur place ; en mode
-  // `blob` elles sont livrees directement par le stockage objet.
+  // Images generees. Trois cas :
+  //  - disque            : servies par l'application ;
+  //  - store Blob public : servies directement par le CDN, rien a faire ici ;
+  //  - store Blob prive  : relayees ici, car leur URL exige un jeton.
   if (config.storage.driver === 'disk') {
     app.use('/media', express.static(config.mediaDir, { immutable: true, maxAge: '7d', index: false }));
+  } else if (config.storage.blobAccess === 'private') {
+    app.get('/media/:file', async (req, res, next) => {
+      try {
+        const found = await readPrivateBlob(req.params.file);
+        if (!found) return next(new HttpError(404, 'not_found', 'Image introuvable.'));
+
+        // Le nom de fichier porte l'identifiant du projet : le contenu ne
+        // change jamais. Le CDN garde donc chaque image et ne redemande au
+        // stockage qu'une seule fois par region.
+        res.set('Content-Type', found.mime);
+        res.set('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
+        return Readable.fromWeb(found.stream).pipe(res);
+      } catch (err) {
+        return next(err);
+      }
+    });
   }
 
   // `redirect: false` : /kiosk, /vote… sont servis par les routes ci-dessous,

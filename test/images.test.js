@@ -130,3 +130,92 @@ test('prompt : sujet, interdits, puis rendu impose en dernier', () => {
   assert.equal(buildTitle('Une place de marche interne des competences ouverte a tous'), 'Une place de marche interne des competences…');
   assert.equal(buildTitle(''), 'Projet sans titre');
 });
+
+/**
+ * Stockage objet. Le module @vercel/blob est charge paresseusement par
+ * l'application : on le remplace dans le cache de modules pour verifier le
+ * comportement sans store reel.
+ */
+function stubBlobSdk(handlers) {
+  const resolved = require.resolve('@vercel/blob');
+  const previous = require.cache[resolved];
+  require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports: handlers };
+  return () => {
+    if (previous) require.cache[resolved] = previous;
+    else delete require.cache[resolved];
+  };
+}
+
+test('store Blob prive : l’image est relayee par l’application', async (t) => {
+  const previous = { ...config.storage };
+  config.storage.driver = 'blob';
+  config.storage.blobAccess = 'private';
+  config.storage.blobToken = 'jeton-de-test';
+
+  const puts = [];
+  const restore = stubBlobSdk({
+    put: async (pathname, body, options) => {
+      puts.push({ pathname, options });
+      return { url: `https://store.private.blob.vercel-storage.com/${pathname}` };
+    },
+    get: async (pathname, options) => {
+      if (!pathname.endsWith('prj_present.png')) return null;
+      assert.equal(options.access, 'private');
+      assert.equal(options.token, 'jeton-de-test');
+      return {
+        statusCode: 200,
+        blob: { contentType: 'image/png' },
+        stream: new ReadableStream({
+          start(controller) { controller.enqueue(new Uint8Array([137, 80, 78, 71])); controller.close(); },
+        }),
+      };
+    },
+  });
+
+  const { saveImage } = require('../server/services/media');
+  const saved = await saveImage({ id: 'prj_present', buffer: Buffer.from('x'), ext: 'png', mime: 'image/png' });
+
+  // L'URL privee exigerait un jeton : inutilisable dans une balise <img>.
+  assert.equal(saved.url, '/media/prj_present.png');
+  assert.equal(puts[0].pathname, 'projects/prj_present.png');
+  assert.equal(puts[0].options.access, 'private');
+
+  const { createApp } = require('../server/app');
+  const app = createApp({ store: null, logger: { log() {}, warn() {}, error() {} } });
+  const server = app.listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    restore();
+    Object.assign(config.storage, previous);
+  });
+
+  const res = await fetch(`${base}${saved.url}`);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-type'), 'image/png');
+  assert.match(res.headers.get('cache-control'), /immutable/, 'le CDN doit garder l’image');
+  assert.equal(Buffer.from(await res.arrayBuffer()).length, 4);
+
+  const missing = await fetch(`${base}/media/prj_absent.png`);
+  assert.equal(missing.status, 404);
+});
+
+test('store Blob public : l’URL du CDN est utilisee telle quelle', async (t) => {
+  const previous = { ...config.storage };
+  config.storage.driver = 'blob';
+  config.storage.blobAccess = 'public';
+
+  const restore = stubBlobSdk({
+    put: async (pathname, body, options) => {
+      assert.equal(options.access, 'public');
+      return { url: `https://store.public.blob.vercel-storage.com/${pathname}` };
+    },
+  });
+  t.after(() => { restore(); Object.assign(config.storage, previous); });
+
+  const { saveImage } = require('../server/services/media');
+  const saved = await saveImage({ id: 'prj_public', buffer: Buffer.from('x'), ext: 'jpg', mime: 'image/jpeg' });
+  assert.match(saved.url, /^https:\/\/store\.public\.blob\.vercel-storage\.com\/projects\/prj_public\.jpg$/);
+});
