@@ -64,7 +64,7 @@ function createApp({ store, hub = new EventHub(), logger = console, generate } =
   //  - store Blob prive  : relayees ici, car leur URL exige un jeton.
   if (config.storage.driver === 'disk') {
     app.use('/media', express.static(config.mediaDir, { immutable: true, maxAge: '7d', index: false }));
-  } else if (config.storage.blobAccess === 'private') {
+  } else {
     app.get('/media/:file', async (req, res, next) => {
       try {
         const found = await readPrivateBlob(req.params.file);

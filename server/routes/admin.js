@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('crypto');
 const express = require('express');
 const config = require('../config');
 const { safeEqual } = require('../util/auth');
@@ -10,17 +11,60 @@ const { rankedLeaderboard } = require('./api');
 const BOOLEAN_SETTINGS = ['voting_open', 'kiosk_open', 'allow_self_vote', 'results_public'];
 const route = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
+/** Empreinte du code d'acces : le code lui-meme n'est jamais stocke. */
+function hashCode(code) {
+  return crypto.createHash('sha256').update(`${config.sessionSecret}|admin|${code}`).digest('hex');
+}
+
 module.exports = function adminRoutes({ store, hub }) {
   const router = express.Router();
 
-  router.use((req, res, next) => {
-    const provided = req.get('x-admin-token') || (req.query.token ?? '');
-    res.set('Cache-Control', 'no-store');
-    if (!safeEqual(provided, config.adminToken)) {
-      return next(new HttpError(401, 'admin_unauthorized', 'Code d’acces administrateur invalide.'));
-    }
-    return next();
-  });
+  /**
+   * Definition du code d'acces au premier lancement, quand aucun ADMIN_TOKEN
+   * n'est fourni par la configuration. Possible seulement tant que
+   * l'evenement n'a pas commence : une fois qu'un participant existe, le code
+   * ne peut plus etre revendique par un visiteur de passage.
+   */
+  router.post(
+    '/claim',
+    route(async (req, res) => {
+      res.set('Cache-Control', 'no-store');
+      if (config.adminToken) {
+        throw new HttpError(409, 'admin_fixed', 'Le code est fixe par la configuration (ADMIN_TOKEN).');
+      }
+      if (await store.setting('admin_token_hash', '')) {
+        throw new HttpError(409, 'admin_defined', 'Un code d’acces a deja ete defini pour cet evenement.');
+      }
+      if ((await store.stats()).participants > 0) {
+        throw new HttpError(
+          409,
+          'event_started',
+          'L’evenement a deja commence : definissez ADMIN_TOKEN dans la configuration de l’hebergement.'
+        );
+      }
+
+      const code = cleanText(req.body?.code, { field: 'Code d’acces', min: 6, max: 80 });
+      await store.setSettings({ admin_token_hash: hashCode(code) });
+      res.status(201).json({ ok: true });
+    })
+  );
+
+  router.use(
+    route(async (req, res, next) => {
+      const provided = String(req.get('x-admin-token') || req.query.token || '');
+      res.set('Cache-Control', 'no-store');
+
+      const stored = await store.setting('admin_token_hash', '');
+      const accepted =
+        (config.adminToken && safeEqual(provided, config.adminToken)) ||
+        (stored && provided && safeEqual(hashCode(provided), stored));
+
+      if (!accepted) {
+        return next(new HttpError(401, 'admin_unauthorized', 'Code d’acces administrateur invalide.'));
+      }
+      return next();
+    })
+  );
 
   router.get(
     '/state',

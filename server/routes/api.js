@@ -53,6 +53,8 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
         store.stats(),
         store.votesPerParticipant(),
       ]);
+      // Sans code d'acces defini, la console propose d'en choisir un.
+      const adminConfigured = Boolean(config.adminToken || settings.admin_token_hash);
       publicCache(res);
       res.json({
         eventName: settings.event_name,
@@ -66,6 +68,7 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
         realtime: config.runtime.realtime,
         renderMode: config.runtime.renderMode,
         pollIntervalMs: config.runtime.pollIntervalMs,
+        adminConfigured,
         stats,
       });
     })

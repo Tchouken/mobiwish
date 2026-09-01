@@ -20,13 +20,17 @@
 
     <!-- Connexion -->
     <section class="panel login" id="login">
-      <h2>Accès réservé</h2>
+      <h2 id="login-title">Accès réservé</h2>
+      <p class="muted" id="login-help" hidden>
+        Aucun code n’a encore été défini pour cet événement. Choisissez-en un maintenant :
+        il vous sera demandé à chaque ouverture de cette console.
+      </p>
       <form id="form-login">
-        <label class="field"><span>Code d’accès</span>
-          <input id="admin-token" type="password" autocomplete="off" required />
+        <label class="field"><span id="login-label">Code d’accès</span>
+          <input id="admin-token" type="password" autocomplete="off" required minlength="6" />
         </label>
         <p class="notice notice--error" id="login-error" hidden></p>
-        <button class="btn" type="submit">Entrer</button>
+        <button class="btn" type="submit" id="login-submit">Entrer</button>
       </form>
     </section>
 

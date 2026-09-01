@@ -137,3 +137,58 @@ test('flux temps reel : diffuse la creation de projet et les votes', async (t) =
   assert.match(text, /event: project:created/);
   assert.match(text, /event: project:ready/);
 });
+
+test('code d’acces : defini au premier lancement quand la configuration n’en impose pas', async (t) => {
+  const config = require('../server/config');
+  const previous = config.adminToken;
+  config.adminToken = '';
+
+  const server = await startServer();
+  t.after(async () => { await server.close(); config.adminToken = previous; });
+
+  // La console sait qu'aucun code n'existe encore.
+  assert.equal((await server.request('/api/config')).body.adminConfigured, false);
+  assert.equal((await server.request('/api/admin/state', { admin: 'peu-importe' })).status, 401);
+
+  const tooShort = await server.request('/api/admin/claim', { method: 'POST', body: { code: 'court' } });
+  assert.equal(tooShort.status, 400);
+
+  const claimed = await server.request('/api/admin/claim', { method: 'POST', body: { code: 'journee-creative' } });
+  assert.equal(claimed.status, 201);
+
+  assert.equal((await server.request('/api/config')).body.adminConfigured, true);
+  assert.equal((await server.request('/api/admin/state', { admin: 'journee-creative' })).status, 200);
+  assert.equal((await server.request('/api/admin/state', { admin: 'autre-code' })).status, 401);
+
+  // Le code ne peut plus etre revendique une fois defini.
+  const again = await server.request('/api/admin/claim', { method: 'POST', body: { code: 'un-autre-code' } });
+  assert.equal(again.status, 409);
+  assert.equal(again.body.error.code, 'admin_defined');
+});
+
+test('code d’acces : plus revendicable une fois l’evenement commence', async (t) => {
+  const config = require('../server/config');
+  const previous = config.adminToken;
+  config.adminToken = '';
+
+  const server = await startServer();
+  t.after(async () => { await server.close(); config.adminToken = previous; });
+
+  await identify(server);
+
+  const res = await server.request('/api/admin/claim', { method: 'POST', body: { code: 'trop-tard-pour-cela' } });
+  assert.equal(res.status, 409);
+  assert.equal(res.body.error.code, 'event_started');
+});
+
+test('code d’acces : la configuration reste prioritaire', async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+
+  // ADMIN_TOKEN est defini dans l'environnement de test.
+  assert.equal((await server.request('/api/config')).body.adminConfigured, true);
+  const res = await server.request('/api/admin/claim', { method: 'POST', body: { code: 'tentative-de-prise' } });
+  assert.equal(res.status, 409);
+  assert.equal(res.body.error.code, 'admin_fixed');
+  assert.equal((await server.request('/api/admin/state', { admin: ADMIN })).status, 200);
+});

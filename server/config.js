@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const bool = (v, fallback) => (v === undefined || v === '' ? fallback : /^(1|true|yes|on)$/i.test(v));
@@ -23,8 +24,13 @@ const config = {
   port: int(process.env.PORT, 3000),
   publicUrl: (process.env.PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://localhost:${int(process.env.PORT, 3000)}`)).replace(/\/$/, ''),
 
-  sessionSecret: process.env.SESSION_SECRET || 'dev-secret-change-me',
-  adminToken: process.env.ADMIN_TOKEN || 'admin',
+  // A defaut de secret fourni, on en derive un a partir d'une valeur secrete
+  // deja presente et stable (chaine de connexion, jeton de stockage) : le meme
+  // sur toutes les instances et d'un deploiement a l'autre. Une variable de
+  // moins a saisir, sans revenir a un secret connu de tous.
+  sessionSecret: process.env.SESSION_SECRET || derivedSecret(databaseUrl, process.env.BLOB_READ_WRITE_TOKEN),
+  // Vide = aucun code fixe : le code est defini au premier acces a /admin.
+  adminToken: process.env.ADMIN_TOKEN && process.env.ADMIN_TOKEN !== 'admin' ? process.env.ADMIN_TOKEN : '',
   kioskToken: process.env.KIOSK_TOKEN || '',
 
   dataDir,
@@ -44,7 +50,11 @@ const config = {
     // Un store Vercel Blob est cree public ou prive, et ne change pas ensuite.
     // En prive, les fichiers ne sont pas joignables directement par un
     // navigateur : l'application les sert elle-meme (voir /media).
-    blobAccess: (process.env.BLOB_ACCESS || 'public').toLowerCase() === 'private' ? 'private' : 'public',
+    // `auto` : le mode est decouvert au premier depot puis memorise. Un store
+    // prive et un store public s'utilisent alors sans rien declarer.
+    blobAccess: ['public', 'private'].includes(String(process.env.BLOB_ACCESS || '').toLowerCase())
+      ? String(process.env.BLOB_ACCESS).toLowerCase()
+      : 'auto',
   },
 
   // Serverless : pas de tache de fond apres la reponse, et pas de flux SSE
@@ -59,7 +69,8 @@ const config = {
   },
 
   image: {
-    provider: (process.env.IMAGE_PROVIDER || 'mock').toLowerCase(),
+    // Fournisseur deduit de la cle d'API presente, sauf mention explicite.
+    provider: (process.env.IMAGE_PROVIDER || inferredProvider()).toLowerCase(),
     openaiKey: process.env.OPENAI_API_KEY || '',
     openaiModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5',
     openaiSize: process.env.OPENAI_IMAGE_SIZE || '1024x1024',
@@ -117,18 +128,13 @@ if (config.onVercel && config.storage.driver === 'blob' && !config.storage.blobT
     hint: 'Vercel → Storage → Create → Blob. Le jeton est injecte automatiquement.',
   });
 }
-if ((config.onVercel || config.strictSecret) && config.sessionSecret === 'dev-secret-change-me') {
+// Le secret de session est derive a defaut d'etre fourni : il ne manque que
+// s'il n'existe aucune valeur secrete stable dont le deriver.
+if ((config.onVercel || config.strictSecret) && !config.sessionSecret) {
   config.missing.push({
     key: 'SESSION_SECRET',
     label: 'Secret de signature des sessions',
     hint: 'Une chaine aleatoire de 32 caracteres ou plus, propre a l’evenement.',
-  });
-}
-if ((config.onVercel || config.strictSecret) && config.adminToken === 'admin') {
-  config.missing.push({
-    key: 'ADMIN_TOKEN',
-    label: 'Code d’acces a la console d’animation',
-    hint: 'Le code demande a l’ouverture de /admin.',
   });
 }
 
@@ -136,6 +142,20 @@ if ((config.onVercel || config.strictSecret) && config.adminToken === 'admin') {
 // mieux vaut refuser de demarrer que servir un evenement mal configure.
 if (!config.onVercel && config.missing.length) {
   throw new Error(`Configuration incomplete : ${config.missing.map((m) => m.key).join(', ')}.`);
+}
+
+/** Secret stable derive d'une valeur secrete deja fournie par l'hebergeur. */
+function derivedSecret() {
+  var material = Array.prototype.slice.call(arguments).filter(Boolean).join('|');
+  if (!material) return '';
+  return crypto.createHash('sha256').update('mobiwish|session|' + material).digest('base64url');
+}
+
+/** Fournisseur d'images deduit de la cle d'API presente. */
+function inferredProvider() {
+  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) return 'gemini';
+  if (process.env.OPENAI_API_KEY) return 'openai';
+  return 'mock';
 }
 
 module.exports = config;

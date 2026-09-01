@@ -13,11 +13,30 @@
     api(`/admin${path}`, { ...options, token: null, headers: { 'x-admin-token': adminToken, ...(options.headers || {}) } });
 
   // --- Connexion ----------------------------------------------------------
+  // Sans ADMIN_TOKEN dans la configuration, le code est defini ici, au
+  // premier acces : une variable de moins a renseigner chez l'hebergeur.
+  let mustDefineCode = false;
+
+  api('/config', { token: null })
+    .then((config) => {
+      mustDefineCode = config.adminConfigured === false;
+      if (!mustDefineCode) return;
+      el('login-title').textContent = 'Choisissez le code d’accès';
+      el('login-help').hidden = false;
+      el('login-label').textContent = 'Nouveau code d’accès (6 caractères minimum)';
+      el('login-submit').textContent = 'Définir et entrer';
+    })
+    .catch(() => {});
+
   el('form-login').addEventListener('submit', async (evt) => {
     evt.preventDefault();
     adminToken = el('admin-token').value;
     el('login-error').hidden = true;
     try {
+      if (mustDefineCode) {
+        await api('/admin/claim', { method: 'POST', token: null, body: { code: adminToken } });
+        mustDefineCode = false;
+      }
       await load();
       sessionStorage.setItem(TOKEN_KEY, adminToken);
       el('login').classList.add('hidden');

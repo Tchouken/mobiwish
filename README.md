@@ -58,15 +58,23 @@ donc une base gérée et un stockage objet. Le reste est automatique.
    - **privé** : ajouter `BLOB_ACCESS=private`. L'application relaie alors chaque image derrière sa
      propre adresse (`/media/…`), avec un cache CDN permanent — une seule lecture du stockage par
      image et par région. Les visuels ne sont alors accessibles qu'à travers l'application.
-3. **Variables d'environnement** à ajouter à la main :
+3. **Une seule variable à ajouter à la main** :
 
    ```
-   SESSION_SECRET=<chaîne aléatoire de 32+ caractères>
-   ADMIN_TOKEN=<code d’accès admin>
-   PUBLIC_URL=https://<votre-domaine>
-   IMAGE_PROVIDER=gemini
    GEMINI_API_KEY=<clé Google AI Studio>
    ```
+
+   Le reste se déduit tout seul :
+   - `IMAGE_PROVIDER` — déduit de la clé présente (`GEMINI_API_KEY` → Gemini, `OPENAI_API_KEY` → OpenAI, aucune → générateur local) ;
+   - `PUBLIC_URL` — l'adresse du déploiement, sauf domaine personnalisé à déclarer ;
+   - `SESSION_SECRET` — dérivé d'une valeur secrète déjà présente et stable ;
+   - `BLOB_ACCESS` — le mode du store (public ou privé) est découvert au premier dépôt ;
+   - `ADMIN_TOKEN` — à défaut, le code d'accès se choisit à la première ouverture de `/admin`,
+     et n'est plus modifiable une fois qu'un participant existe. Le définir en variable reste
+     possible et reste prioritaire.
+
+   Chacune de ces variables peut être imposée explicitement : la configuration l'emporte
+   toujours sur la déduction.
 
 4. **Schéma de la base** : `npm run migrate` en local avec `DATABASE_URL` pointant sur la base de
    production, ou laisser `AUTO_MIGRATE=1` créer les tables au premier démarrage.
