@@ -101,7 +101,8 @@ Garde-fous : l'application **refuse de démarrer** sur Vercel sans `DATABASE_URL
 
 | Charge | Comportement |
 |---|---|
-| Galerie et classement | mis en cache 3 s par le CDN (`s-maxage`) : 1 000 mobiles qui rafraîchissent ne déclenchent que quelques requêtes vers la base |
+| Galerie et classement | mis en cache 3 s par le CDN (`s-maxage`) : 1 000 mobiles qui rafraîchissent ne déclenchent que quelques requêtes vers la base. À 300 projets, la réponse pèse 32 Ko compressés |
+| Images de la galerie | servies en vignettes par l'optimiseur de la plateforme (480 px sur mobile, 96 px dans les listes) : une carte pèse quelques dizaines de kilo-octets au lieu des ~700 Ko de l'original. Sans cela, parcourir 300 projets représenterait plus de 200 Mo par téléphone |
 | Vote | une écriture par participant, protégée par la clé primaire de `ballots` — un double envoi simultané renvoie `409`, jamais deux bulletins |
 | Génération d'image | une fonction par projet, verrou en base (`claimProjectForRender`) : deux appels concurrents ne produisent jamais deux images |
 | Base | quelques milliers de lignes sur la journée : très en deçà de ce qu'encaisse la plus petite offre Neon |

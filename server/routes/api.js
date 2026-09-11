@@ -68,6 +68,7 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
         realtime: config.runtime.realtime,
         renderMode: config.runtime.renderMode,
         pollIntervalMs: config.runtime.pollIntervalMs,
+        imageOptimization: config.runtime.imageOptimization,
         adminConfigured,
         stats,
       });

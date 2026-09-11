@@ -2,13 +2,14 @@
 (function () {
   'use strict';
 
-  const { api, live, esc, el } = window.MW;
+  const { api, live, esc, el, thumb, images } = window.MW;
   const MEDALS = ['🥇', '🥈', '🥉'];
 
   async function refresh() {
     let config = null;
     try {
       config = await api('/config', { token: null });
+      images.optimize = config.imageOptimization === true;
       el('event-name').textContent = config.eventName;
       el('vote-url').textContent = config.voteUrl.replace(/^https?:\/\//, '');
       el('c-projects').textContent = config.stats.projects;
@@ -40,7 +41,7 @@
       .map(
         (row, index) => `
       <div class="slot slot--${index + 1}">
-        ${row.imageUrl ? `<img src="${esc(row.imageUrl)}" alt="Illustration du projet ${esc(row.title)}" />` : ''}
+        ${row.imageUrl ? `<img src="${esc(thumb(row.imageUrl, 768))}" alt="Illustration du projet ${esc(row.title)}" />` : ''}
         <div class="slot-body">
           <span class="medal">${MEDALS[index]}</span>
           <span class="title">${esc(row.title)}</span>
@@ -57,7 +58,7 @@
         (row) => `
       <li>
         <span class="rank">${row.rank}</span>
-        ${row.imageUrl ? `<img src="${esc(row.imageUrl)}" alt="" />` : ''}
+        ${row.imageUrl ? `<img src="${esc(thumb(row.imageUrl, 96))}" alt="" loading="lazy" />` : ''}
         <span class="meta"><strong>${esc(row.title)}</strong><span class="faint">${esc(row.author)}</span></span>
         <span class="votes">${row.votes}</span>
       </li>`

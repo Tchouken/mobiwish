@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, live, esc, el } = window.MW;
+  const { api, live, esc, el, thumb, images } = window.MW;
   const TOKEN_KEY = 'mobiwish.admin';
 
   let adminToken = sessionStorage.getItem(TOKEN_KEY) || '';
@@ -20,6 +20,7 @@
   api('/config', { token: null })
     .then((config) => {
       mustDefineCode = config.adminConfigured === false;
+      images.optimize = config.imageOptimization === true;
       if (!mustDefineCode) return;
       el('login-title').textContent = 'Choisissez le code d’accès';
       el('login-help').hidden = false;
@@ -103,7 +104,7 @@
       <tr>
         <td>
           <div class="cell-project">
-            ${p.imageUrl ? `<img class="thumb" src="${esc(p.imageUrl)}" alt="" />` : '<div class="thumb"></div>'}
+            ${p.imageUrl ? `<img class="thumb" src="${esc(thumb(p.imageUrl, 96))}" alt="" loading="lazy" />` : '<div class="thumb"></div>'}
             <span>${esc(p.title)}</span>
           </div>
         </td>

@@ -149,6 +149,20 @@
     });
   }
 
+  /**
+   * Vignette d'une image de projet. Les originaux font ~700 Ko : a plusieurs
+   * centaines de projets, une galerie qui les charge tels quels devient
+   * inutilisable au telephone. L'optimiseur de la plateforme renvoie une
+   * version redimensionnee ; hors plateforme, l'original est servi tel quel.
+   */
+  const images = { optimize: false };
+
+  function thumb(url, width) {
+    if (!url) return '';
+    if (!images.optimize || url.startsWith('data:')) return url;
+    return `/_vercel/image?url=${encodeURIComponent(url)}&w=${width}&q=75`;
+  }
+
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
   ));
@@ -171,5 +185,5 @@
     return { reset, stop: () => clearTimeout(handle) };
   }
 
-  global.MW = { api, store, subscribe, live, esc, el, plural, idleTimer, showSetupNotice };
+  global.MW = { api, store, subscribe, live, esc, el, plural, idleTimer, showSetupNotice, thumb, images };
 })(window);

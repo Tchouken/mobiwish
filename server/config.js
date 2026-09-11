@@ -63,6 +63,10 @@ const config = {
     renderMode: (process.env.RENDER_MODE || (onVercel ? 'request' : 'inline')).toLowerCase(),
     realtime: (process.env.REALTIME || (onVercel ? 'poll' : 'sse')).toLowerCase(),
     pollIntervalMs: int(process.env.POLL_INTERVAL_MS, 5000),
+    // Vignettes servies par l'optimiseur d'images de la plateforme : une
+    // galerie de plusieurs centaines de projets reste consultable au
+    // telephone, sans telecharger les originaux.
+    imageOptimization: bool(process.env.IMAGE_OPTIMIZATION, onVercel),
     // Duree de cache CDN des reponses publiques : un pic de votants ne
     // declenche qu'une poignee de requetes vers la base.
     publicCacheSeconds: int(process.env.PUBLIC_CACHE_SECONDS, onVercel ? 3 : 0),

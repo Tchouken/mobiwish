@@ -47,3 +47,23 @@ test('routage Vercel : la duree maximale couvre la generation d’image', () => 
   assert.ok(fn, 'la fonction api/index.js doit etre declaree');
   assert.ok(fn.maxDuration >= 60, 'une generation d’image peut depasser une minute');
 });
+
+test('vignettes : toutes les largeurs demandees par les interfaces sont autorisees', () => {
+  // L'optimiseur d'images rejette une largeur non declaree : la galerie
+  // afficherait alors des images cassees en production, jamais en local.
+  const declared = (vercel.images && vercel.images.sizes) || [];
+  assert.ok(declared.length, 'vercel.json doit declarer les largeurs de vignettes');
+
+  const clients = ['vote/vote.js', 'display/display.js', 'admin/admin.js'];
+  const widths = new Set();
+
+  for (const file of clients) {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'public', file), 'utf8');
+    for (const match of source.matchAll(/thumb\([^,]+,\s*(\d+)\s*\)/g)) widths.add(Number(match[1]));
+  }
+
+  assert.ok(widths.size > 0, 'les interfaces doivent demander des vignettes');
+  for (const width of widths) {
+    assert.ok(declared.includes(width), `largeur ${width} utilisee par une interface mais absente de vercel.json`);
+  }
+});

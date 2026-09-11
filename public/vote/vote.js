@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const { api, store, live, esc, el, plural } = window.MW;
+  const { api, store, live, esc, el, plural, thumb, images } = window.MW;
 
   const state = {
     config: null,
@@ -17,6 +17,7 @@
   async function refreshConfig() {
     state.config = await api('/config', { token: null });
     state.max = state.config.votesPerParticipant;
+    images.optimize = state.config.imageOptimization === true;
     el('event-name').textContent = state.config.eventName;
     document.title = `Vote — ${state.config.eventName}`;
     el('intro-help').textContent = state.config.votingOpen
@@ -63,7 +64,7 @@
         return `
         <div class="project" role="button" tabindex="0" aria-pressed="${selected}" data-id="${esc(p.id)}">
           <span class="tick" aria-hidden="true">✓</span>
-          <img src="${esc(p.imageUrl)}" alt="Illustration du projet ${esc(p.title)}" loading="lazy" />
+          <img src="${esc(thumb(p.imageUrl, 480))}" alt="Illustration du projet ${esc(p.title)}" loading="lazy" decoding="async" />
           <div class="project-body">
             <span class="project-title">${esc(p.title)}</span>
             <span class="project-author">${esc(p.author)}</span>
@@ -133,7 +134,7 @@
     const project = state.projects.find((p) => p.id === id);
     if (!project) return;
     state.detailId = id;
-    el('detail-img').src = project.imageUrl;
+    el('detail-img').src = thumb(project.imageUrl, 768);
     el('detail-img').alt = `Illustration du projet ${project.title}`;
     el('detail-title').textContent = project.title;
     el('detail-author').textContent = `Par ${project.author}`;
@@ -234,7 +235,7 @@
               (row) => `
           <li>
             <span class="rank">${row.rank}</span>
-            ${row.imageUrl ? `<img src="${esc(row.imageUrl)}" alt="" />` : ''}
+            ${row.imageUrl ? `<img src="${esc(thumb(row.imageUrl, 96))}" alt="" loading="lazy" />` : ''}
             <span class="meta"><strong>${esc(row.title)}</strong><span class="faint">${esc(row.author)}</span></span>
             <span class="votes">${row.votes}</span>
           </li>`
