@@ -145,3 +145,20 @@ test('textes des ecrans : exposes aux interfaces et modifiables depuis la consol
   assert.equal(after.body.copy.kioskCta, 'Imaginer ma vision');
   assert.equal(after.body.copy.voteHeadline, 'Votez pour 2035');
 });
+
+test('QR code : livre avec la configuration, sans dependre d’une requete d’image', async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+
+  const { body } = await server.request('/api/config');
+  assert.match(body.voteQr, /^data:image\/svg\+xml;base64,/, 'le QR voyage dans la configuration');
+
+  const svg = Buffer.from(body.voteQr.split(',')[1], 'base64').toString('utf8');
+  assert.match(svg, /<svg/);
+  assert.ok(svg.length > 500, 'le dessin doit etre complet');
+
+  // La route dediee reste disponible pour l'impression des chevalets.
+  const direct = await server.request('/api/qr.svg', { raw: true });
+  assert.equal(direct.status, 200);
+  assert.match(direct.headers.get('content-type'), /image\/svg\+xml/);
+});

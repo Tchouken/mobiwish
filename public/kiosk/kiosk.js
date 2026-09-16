@@ -61,6 +61,7 @@
       el('attract-footnote').textContent = copy.kioskFootnote || '';
       el('btn-start').textContent = copy.kioskCta || 'Commencer';
       el('answer-question').textContent = state.config.question;
+      if (state.config.voteQr) el('result-qr').src = state.config.voteQr;
       document.title = `Borne — ${state.config.eventName}`;
       if (!state.config.kioskOpen && el('screen-attract').hidden === false) show('closed');
     } catch {

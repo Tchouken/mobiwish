@@ -13,6 +13,23 @@ const { publicProject, ownProject, publicParticipant } = require('../services/se
 /** Petit utilitaire : renvoie les erreurs asynchrones a Express. */
 const route = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
+/**
+ * QR code du vote, encode en donnees dans la reponse de configuration.
+ * Il voyage ainsi avec un appel qui fonctionne deja, plutot que de dependre
+ * d'une requete d'image separee : une regle de routage manquante ou une
+ * particularite de l'hebergeur ne peut plus le casser. Memoise par cible :
+ * le meme dessin pour toute la duree de l'evenement.
+ */
+const qrCache = new Map();
+
+async function voteQrDataUri(target) {
+  if (!qrCache.has(target)) {
+    const svg = await QRCode.toString(target, { type: 'svg', margin: 1, width: 512 });
+    qrCache.set(target, `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`);
+  }
+  return qrCache.get(target);
+}
+
 /** Cache CDN des reponses publiques : absorbe les pics de consultation. */
 function publicCache(res) {
   const seconds = config.runtime.publicCacheSeconds;
@@ -48,10 +65,12 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
   router.get(
     '/config',
     route(async (req, res) => {
-      const [settings, stats, votesPerParticipant] = await Promise.all([
+      const voteUrl = `${config.publicUrl}/vote`;
+      const [settings, stats, votesPerParticipant, voteQr] = await Promise.all([
         store.settings(),
         store.stats(),
         store.votesPerParticipant(),
+        voteQrDataUri(voteUrl),
       ]);
       // Sans code d'acces defini, la console propose d'en choisir un.
       const adminConfigured = Boolean(config.adminToken || settings.admin_token_hash);
@@ -75,7 +94,8 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
         kioskOpen: settings.kiosk_open === '1',
         allowSelfVote: settings.allow_self_vote === '1',
         resultsPublic: settings.results_public === '1',
-        voteUrl: `${config.publicUrl}/vote`,
+        voteUrl,
+        voteQr,
         realtime: config.runtime.realtime,
         renderMode: config.runtime.renderMode,
         pollIntervalMs: config.runtime.pollIntervalMs,

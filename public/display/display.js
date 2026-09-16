@@ -14,6 +14,7 @@
       el('event-name').textContent = config.eventName;
       el('display-headline').textContent = copy.displayHeadline || 'Les projets de la journée';
       el('display-intro').textContent = copy.displayIntro || '';
+      if (config.voteQr) el('display-qr').src = config.voteQr;
       document.title = config.eventName;
       el('vote-url').textContent = config.voteUrl.replace(/^https?:\/\//, '');
       el('c-projects').textContent = config.stats.projects;

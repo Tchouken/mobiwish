@@ -21,6 +21,7 @@
     .then((config) => {
       mustDefineCode = config.adminConfigured === false;
       images.optimize = config.imageOptimization === true;
+      if (config.voteQr) el('admin-qr').src = config.voteQr;
       if (!mustDefineCode) return;
       el('login-title').textContent = 'Choisissez le code d’accès';
       el('login-help').hidden = false;
