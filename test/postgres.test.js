@@ -85,6 +85,8 @@ test('postgres : schema, projets, votes, classement et export', async (t) => {
     provider: 'openai',
   });
   assert.equal(ready.status, 'ready');
+  assert.equal((await store.gallery()).length, 0, 'une vision non publiee reste hors de la galerie');
+  assert.ok(await store.publishProject(project.id));
   assert.equal((await store.gallery()).length, 1);
   assert.equal((await store.projectsOfParticipant(author.id)).length, 1);
 
@@ -100,7 +102,8 @@ test('postgres : schema, projets, votes, classement et export', async (t) => {
 
   const stats = await store.stats();
   assert.deepEqual(stats, {
-    participants: 2, projects: 1, projectsPending: 0, projectsFailed: 0, projectsHidden: 0, voters: 1, votes: 1,
+    participants: 2, projects: 1, projectsAwaitingPublication: 0, projectsPending: 0, projectsFailed: 0,
+    projectsHidden: 0, voters: 1, votes: 1,
   });
 
   // Moderation et export
@@ -125,6 +128,7 @@ test('postgres : schema, projets, votes, classement et export', async (t) => {
   assert.equal(await store.deleteProject(failing.id), true);
   await store.reset();
   assert.deepEqual(await store.stats(), {
-    participants: 0, projects: 0, projectsPending: 0, projectsFailed: 0, projectsHidden: 0, voters: 0, votes: 0,
+    participants: 0, projects: 0, projectsAwaitingPublication: 0, projectsPending: 0, projectsFailed: 0,
+    projectsHidden: 0, voters: 0, votes: 0,
   });
 });

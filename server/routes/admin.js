@@ -9,6 +9,17 @@ const { adminProject } = require('../services/serialize');
 const { rankedLeaderboard } = require('./api');
 
 const BOOLEAN_SETTINGS = ['voting_open', 'kiosk_open', 'allow_self_vote', 'results_public'];
+/** Textes des ecrans, modifiables sans redeploiement. */
+const COPY_SETTINGS = {
+  kiosk_headline: { field: 'Titre de la borne', max: 120 },
+  kiosk_intro: { field: 'Introduction de la borne', max: 400 },
+  kiosk_cta: { field: 'Bouton de la borne', max: 40 },
+  kiosk_footnote: { field: 'Mention sous le bouton', max: 200 },
+  vote_headline: { field: 'Titre de la page de vote', max: 120 },
+  vote_intro: { field: 'Introduction de la page de vote', max: 400 },
+  display_headline: { field: 'Titre de l’ecran', max: 120 },
+  display_intro: { field: 'Introduction de l’ecran', max: 400 },
+};
 const route = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 
 /** Empreinte du code d'acces : le code lui-meme n'est jamais stocke. */
@@ -111,6 +122,16 @@ module.exports = function adminRoutes({ store, hub }) {
         }
         patch.votes_per_participant = String(n);
       }
+      for (const [key, rule] of Object.entries(COPY_SETTINGS)) {
+        if (body[key] !== undefined) patch[key] = cleanMultiline(body[key], { field: rule.field, min: 2, max: rule.max });
+      }
+      if (body.max_renders !== undefined) {
+        const n = Number(body.max_renders);
+        if (!Number.isInteger(n) || n < 1 || n > 5) {
+          throw new HttpError(400, 'invalid_field', 'Le nombre d’images par vision doit etre compris entre 1 et 5.');
+        }
+        patch.max_renders = String(n);
+      }
       for (const key of BOOLEAN_SETTINGS) {
         if (body[key] !== undefined) patch[key] = body[key] === true || body[key] === '1' || body[key] === 1 ? '1' : '0';
       }
@@ -154,7 +175,10 @@ module.exports = function adminRoutes({ store, hub }) {
     '/export.csv',
     route(async (req, res) => {
       const rows = await store.exportRows();
-      const header = ['id', 'date', 'prenom', 'nom', 'email', 'titre', 'reponse', 'votes', 'statut', 'masque', 'fournisseur', 'image'];
+      const header = [
+        'id', 'date', 'prenom', 'nom', 'email', 'titre', 'texte_auteur', 'reformulation_ia',
+        'votes', 'statut', 'publie', 'masque', 'fournisseur', 'image',
+      ];
       const csv = [header.join(';')]
         .concat(
           rows.map((r) =>
@@ -166,8 +190,10 @@ module.exports = function adminRoutes({ store, hub }) {
               r.email,
               r.title,
               r.answer,
+              r.summary || '',
               Number(r.votes || 0),
               r.status,
+              Number(r.published) ? 'oui' : 'non',
               Number(r.hidden) ? 'oui' : 'non',
               r.provider || '',
               r.image_url || '',

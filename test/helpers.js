@@ -100,14 +100,22 @@ async function identify(server, overrides = {}) {
   return res.body;
 }
 
+/**
+ * Cree une vision et la publie, comme le fait la borne apres validation par
+ * l'auteur. `publish: false` permet de tester l'etat « en attente ».
+ */
 async function createProject(
   server,
   token,
-  answer = 'Une plateforme interne qui recycle les objets du bureau entre collaborateurs.'
+  answer = 'Une plateforme interne qui recycle les objets du bureau entre collaborateurs.',
+  { title = 'Le bureau qui se recycle', publish = true } = {}
 ) {
-  const res = await server.request('/api/projects', { method: 'POST', token, body: { answer } });
+  const res = await server.request('/api/projects', { method: 'POST', token, body: { answer, title } });
   await server.settled();
-  return res;
+  if (!publish || res.status !== 201) return res;
+
+  const published = await server.request(`/api/projects/${res.body.project.id}/publish`, { method: 'POST', token });
+  return { ...res, body: { ...res.body, project: published.body.project || res.body.project } };
 }
 
 module.exports = { startServer, identify, createProject };

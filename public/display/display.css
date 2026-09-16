@@ -8,6 +8,7 @@
 }
 .display-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; }
 .display h1 { font-size: clamp(2rem, 4vw, 3.6rem); margin: 0; }
+.display-intro { margin: .4rem 0 0; font-size: clamp(.9rem, 1.4vw, 1.15rem); color: var(--p-ink-2, #5c5147); max-width: 60ch; }
 .display .eyebrow { font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--brand-dark); margin: 0 0 .3rem; }
 
 .qr-block { display: flex; align-items: center; gap: 1rem; background: var(--paper); padding: 1rem 1.25rem; border-radius: var(--radius-l); box-shadow: var(--shadow-s); }

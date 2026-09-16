@@ -94,11 +94,34 @@ const config = {
     fallbackToMock: bool(process.env.IMAGE_FALLBACK_MOCK, true),
   },
 
+  // Reformulation du texte saisi sur la borne, affichee dans le detail d'un
+  // projet. Utilise la meme cle que la generation d'images.
+  text: {
+    model: process.env.GEMINI_TEXT_MODEL || 'gemini-flash-lite-latest',
+    timeoutMs: int(process.env.TEXT_TIMEOUT_MS, 20000),
+  },
+
   // Valeurs par defaut des reglages modifiables en cours de journee depuis /admin
   defaults: {
-    event_name: 'leboncoin — L’entreprise de demain',
+    event_name: '20 ANS ENSEMBLE — CAP SUR 2035',
+    // Borne
+    kiosk_headline: 'Imaginez leboncoin en 2035',
+    kiosk_intro:
+      'À quoi ressemblera leboncoin demain ? Décrivez votre vision : un nouveau service, un nouvel usage, une nouvelle expérience… ou une idée complètement inattendue.',
+    kiosk_cta: 'Créer ma vision',
+    kiosk_footnote: 'Votre idée sera transformée en image par l’IA en quelques secondes.',
     question:
-      'En 2035, quelle innovation aimeriez-vous voir naitre chez leboncoin pour changer le quotidien de nos utilisateurs ?',
+      'À quoi ressemblera leboncoin demain ? Décrivez votre vision : un nouveau service, un nouvel usage, une nouvelle expérience… ou une idée complètement inattendue.',
+    // Vote mobile
+    vote_headline: 'Votez pour leboncoin en 2035',
+    vote_intro:
+      'Découvrez les visions imaginées par vos collègues et votez pour celles que vous aimeriez voir devenir réalité.',
+    // Écran de l'événement
+    display_headline: 'Votez pour leboncoin en 2035',
+    display_intro:
+      'Découvrez les visions imaginées par vos collègues et votez pour celles que vous aimeriez voir devenir réalité.',
+    // Nombre maximum de générations d'image par vision (reprises comprises)
+    max_renders: '3',
     votes_per_participant: '3',
     voting_open: '1',
     kiosk_open: '1',

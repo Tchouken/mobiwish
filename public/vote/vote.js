@@ -18,8 +18,11 @@
     state.config = await api('/config', { token: null });
     state.max = state.config.votesPerParticipant;
     images.optimize = state.config.imageOptimization === true;
+    const copy = state.config.copy || {};
     el('event-name').textContent = state.config.eventName;
-    document.title = `Vote — ${state.config.eventName}`;
+    el('intro-headline').textContent = copy.voteHeadline || 'Votez pour vos projets préférés';
+    el('intro-text').textContent = copy.voteIntro || '';
+    document.title = state.config.eventName;
     el('intro-help').textContent = state.config.votingOpen
       ? `Sélectionnez jusqu’à ${plural(state.max, 'projet', 'projets')}, puis validez votre vote. Un seul vote par participant.`
       : 'Les votes sont fermés. Vous pouvez parcourir la galerie et consulter le classement.';
@@ -138,7 +141,7 @@
     el('detail-img').alt = `Illustration du projet ${project.title}`;
     el('detail-title').textContent = project.title;
     el('detail-author').textContent = `Par ${project.author}`;
-    el('detail-answer').textContent = project.answer;
+    el('detail-answer').textContent = project.summary || '';
     el('detail-select').textContent = state.selected.has(id) ? 'Retirer de ma sélection' : 'Sélectionner';
     el('detail-select').hidden = state.hasVoted || state.config?.votingOpen === false;
     openSheet('sheet-detail');

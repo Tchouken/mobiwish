@@ -4,7 +4,7 @@
 
   const { api, esc, el, idleTimer } = window.MW;
 
-  const SCREENS = ['attract', 'identity', 'answer', 'loading', 'result', 'closed'];
+  const SCREENS = ['attract', 'identity', 'answer', 'loading', 'review', 'result', 'closed'];
   const IDLE_MS = 120000;        // retour a l'accueil apres 2 min d'inactivite
   const RESULT_MS = 60000;       // duree d'affichage du resultat
   const POLL_MS = 2000;          // frequence d'interrogation pendant la generation
@@ -40,6 +40,7 @@
     el('answer-count').textContent = '0';
     hideError('identity-error');
     hideError('answer-error');
+    hideError('review-error');
     show(state.config && !state.config.kioskOpen ? 'closed' : 'attract');
   }
 
@@ -53,10 +54,14 @@
   async function loadConfig() {
     try {
       state.config = await api('/config');
+      const copy = state.config.copy || {};
       el('attract-event').textContent = state.config.eventName;
-      el('attract-question').textContent = state.config.question;
+      el('attract-headline').textContent = copy.kioskHeadline || 'Imaginez l’entreprise de demain';
+      el('attract-intro').textContent = copy.kioskIntro || state.config.question;
+      el('attract-footnote').textContent = copy.kioskFootnote || '';
+      el('btn-start').textContent = copy.kioskCta || 'Commencer';
       el('answer-question').textContent = state.config.question;
-      document.title = `Borne IA — ${state.config.eventName}`;
+      document.title = `Borne — ${state.config.eventName}`;
       if (!state.config.kioskOpen && el('screen-attract').hidden === false) show('closed');
     } catch {
       /* le serveur repondra a la prochaine tentative */
@@ -100,9 +105,14 @@
   el('form-answer').addEventListener('submit', async (evt) => {
     evt.preventDefault();
     hideError('answer-error');
+    const title = el('vision-title').value.trim();
     const answer = el('answer').value.trim();
+    if (title.length < 2) {
+      showError('answer-error', 'Donnez un titre à votre vision.');
+      return;
+    }
     if (answer.length < 10) {
-      showError('answer-error', 'Décrivez votre idée en quelques mots (10 caractères minimum).');
+      showError('answer-error', 'Décrivez votre vision en quelques mots (10 caractères minimum).');
       return;
     }
 
@@ -115,7 +125,7 @@
         method: 'POST',
         token: state.token,
         headers: kioskToken ? { 'x-kiosk-token': kioskToken } : {},
-        body: { answer },
+        body: { title, answer },
       });
       state.project = project;
 
@@ -152,7 +162,8 @@
         try {
           const { project } = await api(`/projects/${projectId}`, { token: state.token });
           if (project.status === 'ready') {
-            renderResult(project);
+            state.project = project;
+            renderReview(project);
             return resolve();
           }
           if (project.status === 'failed') {
@@ -174,10 +185,83 @@
     });
   }
 
+  /**
+   * Validation par l'auteur : rien n'est publie tant qu'il n'a pas vu son
+   * image et confirme. Il peut aussi demander une autre image, ou revenir
+   * corriger son texte.
+   */
+  function renderReview(project) {
+    clearTimers();
+    hideError('review-error');
+    el('review-img').src = project.imageUrl;
+    el('review-title').textContent = project.title;
+    el('review-summary').textContent = project.summary || project.answer;
+
+    const max = (state.config && state.config.maxRenders) || 3;
+    const left = Math.max(0, max - (project.renderCount || 1));
+    el('btn-regenerate').disabled = left === 0;
+    el('review-renders').textContent = left
+      ? `${left} autre${left > 1 ? 's' : ''} image${left > 1 ? 's' : ''} possible${left > 1 ? 's' : ''}`
+      : 'Nombre d’images atteint pour cette vision';
+
+    show('review');
+  }
+
+  el('btn-publish').addEventListener('click', async () => {
+    const button = el('btn-publish');
+    button.disabled = true;
+    hideError('review-error');
+    try {
+      const { project } = await api(`/projects/${state.project.id}/publish`, {
+        method: 'POST',
+        token: state.token,
+        headers: kioskToken ? { 'x-kiosk-token': kioskToken } : {},
+      });
+      renderResult(project);
+    } catch (err) {
+      showError('review-error', err.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  el('btn-regenerate').addEventListener('click', async () => {
+    const button = el('btn-regenerate');
+    button.disabled = true;
+    hideError('review-error');
+    show('loading');
+    try {
+      const { project, renderMode } = await api(`/projects/${state.project.id}/regenerate`, {
+        method: 'POST',
+        token: state.token,
+        headers: kioskToken ? { 'x-kiosk-token': kioskToken } : {},
+      });
+      if ((renderMode || state.config?.renderMode) === 'request') {
+        api(`/projects/${project.id}/render`, {
+          method: 'POST',
+          token: state.token,
+          headers: kioskToken ? { 'x-kiosk-token': kioskToken } : {},
+        }).catch(() => {});
+      }
+      await waitForImage(project.id);
+    } catch (err) {
+      showError('review-error', err.message);
+      renderReview(state.project);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  el('btn-edit').addEventListener('click', () => {
+    clearTimers();
+    show('answer');
+    el('answer').focus();
+  });
+
   function renderResult(project) {
     el('result-img').src = project.imageUrl;
     el('result-title').textContent = project.title;
-    el('result-answer').textContent = project.answer;
+    el('result-answer').textContent = project.summary || project.answer;
     show('result');
 
     let left = Math.round(RESULT_MS / 1000);
@@ -203,7 +287,8 @@
 
   idleTimer(IDLE_MS, () => {
     // On ne coupe jamais un ecran de generation ou de resultat en cours.
-    if (el('screen-loading').hidden && el('screen-result').hidden && el('screen-attract').hidden) goHome();
+    const busy = !el('screen-loading').hidden || !el('screen-review').hidden || !el('screen-result').hidden;
+    if (!busy && el('screen-attract').hidden) goHome();
   });
 
   loadConfig();

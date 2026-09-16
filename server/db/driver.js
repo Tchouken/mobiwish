@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { STATEMENTS } = require('./schema');
+const { STATEMENTS, ADDED_COLUMNS } = require('./schema');
 
 /**
  * Acces base de donnees, deux moteurs derriere la meme interface :
@@ -15,7 +15,8 @@ const { STATEMENTS } = require('./schema');
  * le pilote PostgreSQL les convertit en `$1, $2, …`.
  */
 
-const isRead = (sql) => /^\s*(select|with)\b/i.test(sql);
+// `pragma` sert a lire la structure d'une table SQLite : c'est une lecture.
+const isRead = (sql) => /^\s*(select|with|pragma)\b/i.test(sql);
 
 function toPgPlaceholders(sql) {
   let index = 0;
@@ -123,14 +124,39 @@ function createDriver(config) {
   return createSqliteDriver({ file: config.dbFile });
 }
 
+/** Colonnes existantes d'une table, quel que soit le moteur. */
+async function columnsOf(driver, table) {
+  if (driver.dialect === 'postgres') {
+    const rows = await driver.query('SELECT column_name FROM information_schema.columns WHERE table_name = ?', [table]);
+    return rows.map((r) => r.column_name);
+  }
+  const rows = await driver.query(`PRAGMA table_info(${table})`, []);
+  return rows.map((r) => r.name);
+}
+
+/**
+ * Ajoute les colonnes apparues apres la mise en service. Sans cela, une base
+ * deja remplie resterait sur l'ancienne structure et l'application echouerait
+ * sur des colonnes inconnues.
+ */
+async function ensureColumns(driver) {
+  const byTable = new Map();
+  for (const entry of ADDED_COLUMNS) {
+    if (!byTable.has(entry.table)) byTable.set(entry.table, await columnsOf(driver, entry.table));
+    if (byTable.get(entry.table).includes(entry.column)) continue;
+    await driver.run(`ALTER TABLE ${entry.table} ADD COLUMN ${entry.column} ${entry.definition}`);
+  }
+}
+
 /** Cree les tables si besoin. Memoise : une seule fois par processus. */
 function ensureSchema(driver) {
   if (!driver.__schemaReady) {
     driver.__schemaReady = (async () => {
       for (const statement of STATEMENTS) await driver.run(statement);
+      await ensureColumns(driver);
     })();
   }
   return driver.__schemaReady;
 }
 
-module.exports = { createDriver, ensureSchema, toPgPlaceholders, numeric };
+module.exports = { createDriver, ensureSchema, ensureColumns, columnsOf, toPgPlaceholders, numeric };

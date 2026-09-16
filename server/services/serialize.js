@@ -16,7 +16,9 @@ function publicProject(row, { showVotes = true } = {}) {
   return {
     id: row.id,
     title: row.title,
-    answer: row.answer,
+    // Le detail affiche la reformulation ; le texte d'origine reste en base
+    // et dans l'export, mais n'est pas expose dans la galerie.
+    summary: row.summary || row.answer,
     author: displayName(row),
     imageUrl: imageUrl(row),
     status: row.status,
@@ -31,9 +33,12 @@ function ownProject(row) {
     id: row.id,
     title: row.title,
     answer: row.answer,
+    summary: row.summary || null,
     question: row.question,
     imageUrl: imageUrl(row),
     status: row.status,
+    published: Boolean(Number(row.published)),
+    renderCount: Number(row.render_count || 0),
     error: row.error || null,
     createdAt: row.created_at,
   };
@@ -44,6 +49,8 @@ function adminProject(row) {
   return {
     ...publicProject(row),
     hidden: Boolean(row.hidden),
+    published: Boolean(Number(row.published)),
+    answer: row.answer,
     provider: row.provider,
     error: row.error || null,
     participantId: row.participant_id,

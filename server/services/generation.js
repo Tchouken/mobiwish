@@ -3,6 +3,7 @@
 const config = require('../config');
 const { generateImage } = require('./imageProvider');
 const { saveImage } = require('./media');
+const { summarizeVision } = require('./text');
 
 /**
  * Genere l'image d'un projet puis met a jour son statut.
@@ -35,10 +36,20 @@ async function runGeneration({ store, hub, project, logger = console }) {
       mime: result.mime,
     });
 
+    // Reformulation affichee dans le detail du projet. Facultative : une
+    // panne du modele texte ne doit pas empecher la publication de l'image.
+    const summary = project.summary
+      ? null
+      : await summarizeVision(
+          { title: project.title, answer: project.answer, question: project.question },
+          { logger }
+        );
+
     const updated = await store.markProjectReady(project.id, {
       imageUrl: stored.url,
       imageMime: stored.mime,
       provider: result.provider,
+      summary,
     });
 
     logger.log?.(`[image] projet ${project.id} pret en ${Date.now() - start} ms (${result.provider})`);

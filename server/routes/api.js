@@ -59,6 +59,17 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
       res.json({
         eventName: settings.event_name,
         question: settings.question,
+        copy: {
+          kioskHeadline: settings.kiosk_headline,
+          kioskIntro: settings.kiosk_intro,
+          kioskCta: settings.kiosk_cta,
+          kioskFootnote: settings.kiosk_footnote,
+          voteHeadline: settings.vote_headline,
+          voteIntro: settings.vote_intro,
+          displayHeadline: settings.display_headline,
+          displayIntro: settings.display_intro,
+        },
+        maxRenders: Number(settings.max_renders) || 3,
         votesPerParticipant,
         votingOpen: settings.voting_open === '1',
         kioskOpen: settings.kiosk_open === '1',
@@ -130,7 +141,7 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
         throw new HttpError(409, 'kiosk_closed', 'La borne est fermee pour le moment.');
       }
 
-      const answer = cleanMultiline(req.body.answer, { field: 'Reponse', min: 10, max: 1200 });
+      const answer = cleanMultiline(req.body.answer, { field: 'Description', min: 10, max: 1200 });
       const question = await store.setting('question', '');
       const inline = config.runtime.renderMode === 'inline';
 
@@ -138,7 +149,9 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
         participantId: req.participant.id,
         question,
         answer,
-        title: cleanText(req.body.title || buildTitle(answer), { field: 'Titre', max: 90 }),
+        // Le titre est desormais saisi par l'auteur : c'est lui, et lui seul,
+        // qui s'affiche dans la galerie. A defaut, on le derive du texte.
+        title: cleanText(req.body.title || buildTitle(answer), { field: 'Titre', min: 2, max: 80 }),
         prompt: buildPrompt(answer, { question }),
         // En mode `inline` le projet est deja pris en charge par ce processus :
         // il ne doit pas etre reclame par un appel a /render.
@@ -190,6 +203,70 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
     })
   );
 
+  /**
+   * Publication : c'est l'auteur qui decide, apres avoir vu son image. Rien
+   * n'entre dans la galerie ni au vote sans cette validation humaine.
+   */
+  router.post(
+    '/projects/:id/publish',
+    requireKioskAccess,
+    requireParticipant,
+    route(async (req, res) => {
+      const project = await store.project(req.params.id);
+      if (!project) throw new HttpError(404, 'not_found', 'Projet introuvable.');
+      if (project.participant_id !== req.participant.id) {
+        throw new HttpError(403, 'forbidden', 'Ce projet ne vous appartient pas.');
+      }
+      if (project.status !== 'ready') {
+        throw new HttpError(409, 'not_ready', 'L’image n’est pas encore prete.');
+      }
+
+      const published = project.published ? project : await store.publishProject(project.id);
+      hub.emit('project:ready', { id: published.id, title: published.title });
+      res.set('Cache-Control', 'no-store');
+      res.json({ project: ownProject(published) });
+    })
+  );
+
+  /** Nouvelle image pour la meme vision, tant qu'elle n'est pas publiee. */
+  router.post(
+    '/projects/:id/regenerate',
+    requireKioskAccess,
+    requireParticipant,
+    rateLimit({ windowMs: 60000, max: 10 }),
+    route(async (req, res) => {
+      const project = await store.project(req.params.id);
+      if (!project) throw new HttpError(404, 'not_found', 'Projet introuvable.');
+      if (project.participant_id !== req.participant.id) {
+        throw new HttpError(403, 'forbidden', 'Ce projet ne vous appartient pas.');
+      }
+      if (project.published) {
+        throw new HttpError(409, 'already_published', 'Cette vision est deja publiee.');
+      }
+
+      const maxRenders = Number(await store.setting('max_renders', '3')) || 3;
+      if (project.render_count >= maxRenders) {
+        throw new HttpError(429, 'render_limit', `Vous avez atteint la limite de ${maxRenders} images pour cette vision.`);
+      }
+      if (!(await store.resetProjectForRender(project.id))) {
+        throw new HttpError(409, 'render_in_progress', 'Une image est deja en cours de generation.');
+      }
+
+      res.set('Cache-Control', 'no-store');
+      const refreshed = await store.project(project.id);
+
+      if (config.runtime.renderMode === 'inline') {
+        // Le verrou sert aussi de compteur : chaque image produite est comptee.
+        await store.claimProjectForRender(refreshed.id);
+        Promise.resolve(generate({ store, hub, project: refreshed, logger })).catch((err) =>
+          logger.error?.(`[image] erreur non geree: ${err.message}`)
+        );
+        return res.status(202).json({ project: ownProject(await store.project(refreshed.id)) });
+      }
+      return res.status(202).json({ project: ownProject(refreshed), renderMode: config.runtime.renderMode });
+    })
+  );
+
   router.get(
     '/projects/:id',
     route(async (req, res) => {
@@ -197,7 +274,7 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
       if (!project) throw new HttpError(404, 'not_found', 'Projet introuvable.');
 
       const isOwner = verifyToken(bearer(req)) === project.participant_id;
-      if (!isOwner && (project.hidden || project.status !== 'ready')) {
+      if (!isOwner && (project.hidden || !project.published || project.status !== 'ready')) {
         throw new HttpError(404, 'not_found', 'Projet introuvable.');
       }
 
@@ -251,7 +328,7 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
       const allowSelfVote = await store.flag('allow_self_vote');
       for (const id of projectIds) {
         const project = await store.project(id);
-        if (!project || project.hidden || project.status !== 'ready') {
+        if (!project || project.hidden || !project.published || project.status !== 'ready') {
           throw new HttpError(400, 'invalid_project', 'Un des projets selectionnes n’est plus disponible.');
         }
         if (!allowSelfVote && project.participant_id === req.participant.id) {

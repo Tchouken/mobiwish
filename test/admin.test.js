@@ -93,7 +93,8 @@ test('admin : reinitialisation exige une confirmation puis vide l’evenement', 
   const reset = await server.request('/api/admin/reset', { method: 'POST', admin: ADMIN, body: { confirm: 'RESET' } });
   assert.equal(reset.status, 200);
   assert.deepEqual(reset.body.stats, {
-    participants: 0, projects: 0, projectsPending: 0, projectsFailed: 0, projectsHidden: 0, voters: 0, votes: 0,
+    participants: 0, projects: 0, projectsAwaitingPublication: 0, projectsPending: 0, projectsFailed: 0,
+    projectsHidden: 0, voters: 0, votes: 0,
   });
 });
 

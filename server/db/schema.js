@@ -22,6 +22,9 @@ const STATEMENTS = [
      question       TEXT NOT NULL,
      answer         TEXT NOT NULL,
      title          TEXT NOT NULL,
+     summary        TEXT,
+     published      INTEGER NOT NULL DEFAULT 0,
+     render_count   INTEGER NOT NULL DEFAULT 0,
      prompt         TEXT,
      provider       TEXT,
      image_url      TEXT,
@@ -32,7 +35,7 @@ const STATEMENTS = [
      created_at     TEXT NOT NULL,
      updated_at     TEXT NOT NULL
    )`,
-  `CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status, hidden)`,
+  `CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status, hidden, published)`,
   `CREATE INDEX IF NOT EXISTS idx_projects_created ON projects (created_at)`,
 
   `CREATE TABLE IF NOT EXISTS ballots (
@@ -55,4 +58,14 @@ const STATEMENTS = [
    )`,
 ];
 
-module.exports = { STATEMENTS };
+/**
+ * Colonnes ajoutees apres coup. Une base deja en service doit les recevoir
+ * sans etre recreee : chaque entree est ajoutee si elle manque.
+ */
+const ADDED_COLUMNS = [
+  { table: 'projects', column: 'summary', definition: 'TEXT' },
+  { table: 'projects', column: 'published', definition: 'INTEGER NOT NULL DEFAULT 0' },
+  { table: 'projects', column: 'render_count', definition: 'INTEGER NOT NULL DEFAULT 0' },
+];
+
+module.exports = { STATEMENTS, ADDED_COLUMNS };

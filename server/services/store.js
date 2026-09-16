@@ -97,10 +97,12 @@ class Store {
   async createProject({ participantId, question, answer, title, prompt, status = 'generating' }) {
     const id = newId('prj');
     const at = nowIso();
+    // Une creation en mode `rendering` lance deja une generation : elle est
+    // comptee ici, sans quoi le plafond de reprises serait fausse.
     await this.db.run(
-      `INSERT INTO projects (id, participant_id, question, answer, title, prompt, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, participantId, question, answer, title, prompt, status, at, at]
+      `INSERT INTO projects (id, participant_id, question, answer, title, prompt, status, render_count, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, participantId, question, answer, title, prompt, status, status === 'rendering' ? 1 : 0, at, at]
     );
     return this.project(id);
   }
@@ -112,19 +114,44 @@ class Store {
    */
   async claimProjectForRender(id) {
     const res = await this.db.run(
-      `UPDATE projects SET status = 'rendering', updated_at = ? WHERE id = ? AND status = 'generating'`,
+      `UPDATE projects SET status = 'rendering', render_count = render_count + 1, updated_at = ?
+       WHERE id = ? AND status = 'generating'`,
       [nowIso(), id]
     );
     return res.rowCount > 0;
   }
 
-  async markProjectReady(id, { imageUrl, imageMime, provider }) {
+  async markProjectReady(id, { imageUrl, imageMime, provider, summary = null }) {
     await this.db.run(
-      `UPDATE projects SET status = 'ready', image_url = ?, image_mime = ?, provider = ?, error = NULL, updated_at = ?
+      `UPDATE projects SET status = 'ready', image_url = ?, image_mime = ?, provider = ?, summary = COALESCE(?, summary),
+              error = NULL, updated_at = ?
        WHERE id = ?`,
-      [imageUrl, imageMime, provider, nowIso(), id]
+      [imageUrl, imageMime, provider, summary, nowIso(), id]
     );
     return this.project(id);
+  }
+
+  /**
+   * Publication validee par l'auteur. Tant qu'un projet n'est pas publie, il
+   * n'apparait ni dans la galerie, ni au vote, ni au classement : rien n'est
+   * expose sans qu'un humain l'ait vu.
+   */
+  async publishProject(id) {
+    const res = await this.db.run(
+      `UPDATE projects SET published = 1, updated_at = ? WHERE id = ? AND status = 'ready'`,
+      [nowIso(), id]
+    );
+    return res.rowCount > 0 ? this.project(id) : null;
+  }
+
+  /** Remet un projet en generation pour produire une autre image. */
+  async resetProjectForRender(id) {
+    const res = await this.db.run(
+      `UPDATE projects SET status = 'generating', error = NULL, updated_at = ?
+       WHERE id = ? AND published = 0 AND status IN ('ready', 'failed')`,
+      [nowIso(), id]
+    );
+    return res.rowCount > 0;
   }
 
   async markProjectFailed(id, message) {
@@ -145,7 +172,13 @@ class Store {
       [id]
     );
     if (!rows.length) return null;
-    return { ...rows[0], votes: toInt(rows[0].votes), hidden: toInt(rows[0].hidden) };
+    return {
+      ...rows[0],
+      votes: toInt(rows[0].votes),
+      hidden: toInt(rows[0].hidden),
+      published: toInt(rows[0].published),
+      render_count: toInt(rows[0].render_count),
+    };
   }
 
   /** Galerie : projets publies, du plus recent au plus ancien. */
@@ -156,7 +189,7 @@ class Store {
       `SELECT pr.*, pa.first_name, pa.last_name,
               (SELECT COUNT(*) FROM votes v WHERE v.project_id = pr.id) AS votes
        FROM projects pr JOIN participants pa ON pa.id = pr.participant_id
-       WHERE pr.status IN (${placeholders}) ${includeHidden ? '' : 'AND pr.hidden = 0'}
+       WHERE pr.status IN (${placeholders}) ${includeHidden ? '' : 'AND pr.hidden = 0 AND pr.published = 1'}
        ORDER BY pr.created_at DESC
        LIMIT ?`,
       [...statuses, limit]
@@ -219,7 +252,7 @@ class Store {
       `SELECT pr.id, pr.title, pr.answer, pr.image_url, pr.created_at, pa.first_name, pa.last_name,
               (SELECT COUNT(*) FROM votes v WHERE v.project_id = pr.id) AS votes
        FROM projects pr JOIN participants pa ON pa.id = pr.participant_id
-       WHERE pr.status = 'ready' ${includeHidden ? '' : 'AND pr.hidden = 0'}
+       WHERE pr.status = 'ready' AND pr.published = 1 ${includeHidden ? '' : 'AND pr.hidden = 0'}
        ORDER BY votes DESC, pr.created_at ASC
        LIMIT ?`,
       [limit]
@@ -231,7 +264,8 @@ class Store {
     const one = async (sql, params = []) => toInt((await this.db.query(sql, params))[0].n);
     return {
       participants: await one('SELECT COUNT(*) AS n FROM participants'),
-      projects: await one("SELECT COUNT(*) AS n FROM projects WHERE status = 'ready' AND hidden = 0"),
+      projects: await one("SELECT COUNT(*) AS n FROM projects WHERE status = 'ready' AND published = 1 AND hidden = 0"),
+      projectsAwaitingPublication: await one("SELECT COUNT(*) AS n FROM projects WHERE status = 'ready' AND published = 0"),
       projectsPending: await one("SELECT COUNT(*) AS n FROM projects WHERE status IN ('generating', 'rendering')"),
       projectsFailed: await one("SELECT COUNT(*) AS n FROM projects WHERE status = 'failed'"),
       projectsHidden: await one('SELECT COUNT(*) AS n FROM projects WHERE hidden = 1'),
@@ -242,7 +276,7 @@ class Store {
 
   async exportRows() {
     return this.db.query(
-      `SELECT pr.id, pr.created_at, pr.title, pr.answer, pr.status, pr.hidden, pr.provider, pr.image_url,
+      `SELECT pr.id, pr.created_at, pr.title, pr.answer, pr.summary, pr.status, pr.hidden, pr.published, pr.provider, pr.image_url,
               pa.first_name, pa.last_name, pa.email,
               (SELECT COUNT(*) FROM votes v WHERE v.project_id = pr.id) AS votes
        FROM projects pr JOIN participants pa ON pa.id = pr.participant_id

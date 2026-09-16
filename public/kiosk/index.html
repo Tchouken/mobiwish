@@ -16,11 +16,11 @@
     <!-- 1. Ecran d'attente -->
     <section class="screen screen--attract" id="screen-attract">
       <div class="attract-inner">
-        <p class="eyebrow" id="attract-event">Journée créative</p>
-        <h1>Imaginez<br />l’entreprise de demain</h1>
-        <p class="lead" id="attract-question">Chargement de la question…</p>
+        <p class="eyebrow" id="attract-event">…</p>
+        <h1 id="attract-headline">…</h1>
+        <p class="lead" id="attract-intro">…</p>
         <button class="btn btn--lg" id="btn-start">Commencer</button>
-        <p class="faint attract-foot">Votre idée devient une image, générée par l’IA en quelques secondes.</p>
+        <p class="faint attract-foot" id="attract-footnote"></p>
       </div>
       <div class="attract-art" aria-hidden="true"><span></span><span></span><span></span></div>
     </section>
@@ -58,9 +58,12 @@
         <p class="step">Étape 2 sur 2 — <span id="answer-hello"></span></p>
         <h2 id="answer-question">…</h2>
         <form id="form-answer" novalidate>
-          <label class="field">
-            <span class="sr-only">Votre réponse</span>
-            <textarea id="answer" maxlength="1200" rows="6" placeholder="Décrivez votre idée en quelques phrases : ce qu’elle change, pour qui, à quoi elle ressemble…"></textarea>
+          <label class="field"><span>Le titre de votre vision</span>
+            <input id="vision-title" type="text" maxlength="80" autocomplete="off"
+                   placeholder="ex. Le toit nourricier" />
+          </label>
+          <label class="field"><span>Décrivez-la</span>
+            <textarea id="answer" maxlength="1200" rows="5" placeholder="Ce qu’elle change, pour qui, à quoi elle ressemble…"></textarea>
           </label>
           <p class="counter"><span id="answer-count">0</span> / 1200 caractères</p>
           <p class="notice notice--error" id="answer-error" hidden></p>
@@ -81,19 +84,40 @@
       </div>
     </section>
 
-    <!-- 5. Resultat -->
+    <!-- 5. Validation par l'auteur avant publication -->
+    <section class="screen screen--result" id="screen-review" hidden>
+      <div class="result-grid">
+        <figure class="result-image">
+          <img id="review-img" alt="Illustration générée à partir de votre vision" />
+        </figure>
+        <div class="result-side">
+          <p class="badge">À valider avant publication</p>
+          <h2 id="review-title"></h2>
+          <p class="muted" id="review-summary"></p>
+          <p class="notice notice--error" id="review-error" hidden></p>
+          <button class="btn btn--lg btn--block" id="btn-publish">Publier ma vision</button>
+          <div class="review-actions">
+            <button class="btn btn--ghost" id="btn-regenerate">Une autre image</button>
+            <button class="btn btn--ghost" id="btn-edit">Modifier mon texte</button>
+          </div>
+          <p class="faint center" id="review-renders"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Confirmation -->
     <section class="screen screen--result" id="screen-result" hidden>
       <div class="result-grid">
         <figure class="result-image">
-          <img id="result-img" alt="Illustration générée à partir de votre idée" />
+          <img id="result-img" alt="Illustration de votre vision" />
         </figure>
         <div class="result-side">
-          <p class="badge">Projet ajouté à la galerie</p>
+          <p class="badge">Publiée dans la galerie</p>
           <h2 id="result-title"></h2>
           <p class="muted" id="result-answer"></p>
           <div class="result-qr">
             <img src="/api/qr.svg" alt="QR code d’accès au vote" width="132" height="132" />
-            <p class="faint">Scannez pour voter depuis votre mobile.</p>
+            <p class="faint">Scannez pour découvrir la galerie et voter.</p>
           </div>
           <button class="btn btn--lg btn--block" data-action="home">Terminer</button>
           <p class="faint center" id="result-countdown"></p>

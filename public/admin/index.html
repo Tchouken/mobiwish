@@ -49,7 +49,24 @@
 
           <label class="field"><span>Nom de l’événement</span><input id="event_name" type="text" maxlength="120" /></label>
           <label class="field"><span>Question créative affichée sur la borne</span><textarea id="question" maxlength="400" rows="3"></textarea></label>
-          <label class="field"><span>Nombre de votes par participant</span><input id="votes_per_participant" type="number" min="1" max="10" /></label>
+          <div class="grid-2">
+            <label class="field"><span>Votes par participant</span><input id="votes_per_participant" type="number" min="1" max="10" /></label>
+            <label class="field"><span>Images par vision</span><input id="max_renders" type="number" min="1" max="5" /></label>
+          </div>
+
+          <details class="copy-block">
+            <summary>Textes des écrans</summary>
+            <label class="field"><span>Borne — titre</span><input id="kiosk_headline" type="text" maxlength="120" /></label>
+            <label class="field"><span>Borne — introduction</span><textarea id="kiosk_intro" maxlength="400" rows="2"></textarea></label>
+            <div class="grid-2">
+              <label class="field"><span>Borne — bouton</span><input id="kiosk_cta" type="text" maxlength="40" /></label>
+              <label class="field"><span>Borne — mention</span><input id="kiosk_footnote" type="text" maxlength="200" /></label>
+            </div>
+            <label class="field"><span>Vote — titre</span><input id="vote_headline" type="text" maxlength="120" /></label>
+            <label class="field"><span>Vote — introduction</span><textarea id="vote_intro" maxlength="400" rows="2"></textarea></label>
+            <label class="field"><span>Écran — titre</span><input id="display_headline" type="text" maxlength="120" /></label>
+            <label class="field"><span>Écran — introduction</span><textarea id="display_intro" maxlength="400" rows="2"></textarea></label>
+          </details>
 
           <p class="notice notice--ok" id="settings-ok" hidden>Réglages enregistrés.</p>
           <p class="notice notice--error" id="settings-error" hidden></p>

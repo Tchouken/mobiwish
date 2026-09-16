@@ -161,6 +161,29 @@ d’images tombe pendant la journée.
    la révélation ; refermer « Votes ouverts » fige le classement avant l’annonce.
 5. **Après** — export CSV (projets, auteurs, e-mails, votes) depuis `/admin`.
 
+## Le parcours sur la borne
+
+1. **Identification** — prénom, nom, e-mail.
+2. **La vision** — un **titre** court, puis sa description. C'est le titre, saisi par l'auteur,
+   qui s'affiche dans la galerie ; la description n'apparaît que dans le détail.
+3. **Génération** — l'image, et en parallèle une **reformulation en deux phrases** du texte, écrite
+   par le modèle de langage. Le texte d'origine reste conservé en base et dans l'export ; la
+   reformulation est ce que lisent les votants. Si le modèle ne répond pas, c'est le texte
+   d'origine qui s'affiche.
+4. **Validation** — l'auteur voit son image avant tout le monde et décide : **publier**, demander
+   **une autre image** (dans la limite de `max_renders`, 3 par défaut), ou **modifier son texte**.
+5. **Publication** — la vision rejoint alors la galerie et le vote.
+
+**Rien n'est publié sans cette validation.** Une vision non validée n'apparaît ni dans la galerie,
+ni au vote, ni au classement, et ne peut pas recevoir de voix. La console d'animation les liste
+avec la mention « non validé », ce qui permet de repérer un passage interrompu.
+
+## Textes des écrans
+
+Titres, introductions et libellé du bouton de la borne sont modifiables depuis la console
+(« Textes des écrans »), sans redéploiement : `kiosk_headline`, `kiosk_intro`, `kiosk_cta`,
+`kiosk_footnote`, `vote_headline`, `vote_intro`, `display_headline`, `display_intro`.
+
 ## Règles de vote
 
 - **Un bulletin unique par participant**, identifié par son adresse e-mail (insensible à la casse).

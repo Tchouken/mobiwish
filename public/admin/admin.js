@@ -71,6 +71,7 @@
     const tiles = [
       ['Participants', s.participants],
       ['Projets publiés', s.projects],
+      ['En attente de publication', s.projectsAwaitingPublication],
       ['En génération', s.projectsPending],
       ['Échecs', s.projectsFailed],
       ['Votants', s.voters],
@@ -81,11 +82,19 @@
       .join('');
   }
 
+  // Champs texte pilotables depuis la console, sans redeploiement.
+  const COPY_FIELDS = [
+    'kiosk_headline', 'kiosk_intro', 'kiosk_cta', 'kiosk_footnote',
+    'vote_headline', 'vote_intro', 'display_headline', 'display_intro',
+  ];
+
   function renderSettings() {
     const s = state.settings;
     el('event_name').value = s.event_name || '';
     el('question').value = s.question || '';
     el('votes_per_participant').value = s.votes_per_participant || '3';
+    el('max_renders').value = s.max_renders || '3';
+    COPY_FIELDS.forEach((key) => { el(key).value = s[key] || ''; });
     ['kiosk_open', 'voting_open', 'results_public', 'allow_self_vote'].forEach((key) => {
       el(key).checked = s[key] === '1';
     });
@@ -125,6 +134,7 @@
 
   function statusBadge(p) {
     if (p.hidden) return '<span class="badge badge--off">masqué</span>';
+    if (p.status === 'ready' && !p.published) return '<span class="badge badge--warn">non validé</span>';
     if (p.status === 'ready') return '<span class="badge badge--ok">publié</span>';
     if (p.status === 'generating') return '<span class="badge badge--warn">génération…</span>';
     return `<span class="badge badge--warn" title="${esc(p.error || '')}">échec</span>`;
@@ -141,6 +151,8 @@
           event_name: el('event_name').value,
           question: el('question').value,
           votes_per_participant: Number(el('votes_per_participant').value),
+          max_renders: Number(el('max_renders').value),
+          ...Object.fromEntries(COPY_FIELDS.map((key) => [key, el(key).value])),
           kiosk_open: el('kiosk_open').checked,
           voting_open: el('voting_open').checked,
           results_public: el('results_public').checked,

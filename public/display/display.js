@@ -10,7 +10,11 @@
     try {
       config = await api('/config', { token: null });
       images.optimize = config.imageOptimization === true;
+      const copy = config.copy || {};
       el('event-name').textContent = config.eventName;
+      el('display-headline').textContent = copy.displayHeadline || 'Les projets de la journée';
+      el('display-intro').textContent = copy.displayIntro || '';
+      document.title = config.eventName;
       el('vote-url').textContent = config.voteUrl.replace(/^https?:\/\//, '');
       el('c-projects').textContent = config.stats.projects;
       el('c-voters').textContent = config.stats.voters;

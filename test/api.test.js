@@ -49,20 +49,29 @@ test('borne : cree un projet, genere l’image et l’ajoute a la galerie', asyn
   t.after(() => server.close());
 
   const { token } = await identify(server);
-  const created = await createProject(server, token);
+  const created = await createProject(server, token, undefined, { publish: false, title: 'Le bureau qui se recycle' });
   assert.equal(created.status, 201);
   // Hebergement durable : la generation demarre des la creation.
   assert.equal(created.body.project.status, 'rendering');
+  assert.equal(created.body.project.published, false);
 
-  const detail = await server.request(`/api/projects/${created.body.project.id}`);
-  assert.equal(detail.body.project.status, 'ready');
-  assert.match(detail.body.project.imageUrl, /^\/media\//);
+  const own = await server.request(`/api/projects/${created.body.project.id}`, { token });
+  assert.equal(own.body.project.status, 'ready');
+  assert.match(own.body.project.imageUrl, /^\/media\//);
 
-  const media = await fetch(`${server.base}${detail.body.project.imageUrl}`);
+  const media = await fetch(`${server.base}${own.body.project.imageUrl}`);
   assert.equal(media.status, 200);
+
+  // Tant que l'auteur n'a pas valide, la vision reste hors de la galerie.
+  assert.equal((await server.request('/api/projects')).body.projects.length, 0);
+
+  const published = await server.request(`/api/projects/${created.body.project.id}/publish`, { method: 'POST', token });
+  assert.equal(published.status, 200);
+  assert.equal(published.body.project.published, true);
 
   const gallery = await server.request('/api/projects');
   assert.equal(gallery.body.projects.length, 1);
+  assert.equal(gallery.body.projects[0].title, 'Le bureau qui se recycle', 'la galerie affiche le titre saisi');
   assert.equal(gallery.body.projects[0].votes, 0);
 });
 

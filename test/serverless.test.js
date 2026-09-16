@@ -31,8 +31,10 @@ test('serverless : le projet attend l’appel de rendu de la borne', async (t) =
   assert.equal(again.status, 200);
   assert.equal(again.body.project.status, 'ready');
 
-  const gallery = await server.request('/api/projects');
-  assert.equal(gallery.body.projects.length, 1);
+  // Rien n'entre dans la galerie tant que l'auteur n'a pas valide.
+  assert.equal((await server.request('/api/projects')).body.projects.length, 0);
+  await server.request(`/api/projects/${created.body.project.id}/publish`, { method: 'POST', token });
+  assert.equal((await server.request('/api/projects')).body.projects.length, 1);
 });
 
 test('serverless : le rendu est reserve au proprietaire du projet', async (t) => {
