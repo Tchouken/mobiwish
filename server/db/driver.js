@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { STATEMENTS, ADDED_COLUMNS } = require('./schema');
+const { TABLES, INDEXES, ADDED_COLUMNS } = require('./schema');
 
 /**
  * Acces base de donnees, deux moteurs derriere la meme interface :
@@ -145,6 +145,9 @@ async function ensureColumns(driver) {
     if (!byTable.has(entry.table)) byTable.set(entry.table, await columnsOf(driver, entry.table));
     if (byTable.get(entry.table).includes(entry.column)) continue;
     await driver.run(`ALTER TABLE ${entry.table} ADD COLUMN ${entry.column} ${entry.definition}`);
+    // Reprise des donnees existantes, une seule fois : au moment ou la
+    // colonne apparait.
+    if (entry.backfill) await driver.run(entry.backfill);
   }
 }
 
@@ -152,8 +155,11 @@ async function ensureColumns(driver) {
 function ensureSchema(driver) {
   if (!driver.__schemaReady) {
     driver.__schemaReady = (async () => {
-      for (const statement of STATEMENTS) await driver.run(statement);
+      // Ordre impose : tables, puis colonnes ajoutees apres coup, puis index.
+      // Un index peut porter sur une colonne absente d'une base existante.
+      for (const statement of TABLES) await driver.run(statement);
       await ensureColumns(driver);
+      for (const statement of INDEXES) await driver.run(statement);
     })();
   }
   return driver.__schemaReady;

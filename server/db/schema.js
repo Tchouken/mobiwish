@@ -5,7 +5,7 @@
  * PostgreSQL. Les horodatages sont des chaines ISO 8601 : elles se trient
  * lexicographiquement de la meme facon sur les deux moteurs.
  */
-const STATEMENTS = [
+const TABLES = [
   `CREATE TABLE IF NOT EXISTS participants (
      id            TEXT PRIMARY KEY,
      first_name    TEXT NOT NULL,
@@ -35,8 +35,6 @@ const STATEMENTS = [
      created_at     TEXT NOT NULL,
      updated_at     TEXT NOT NULL
    )`,
-  `CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status, hidden, published)`,
-  `CREATE INDEX IF NOT EXISTS idx_projects_created ON projects (created_at)`,
 
   `CREATE TABLE IF NOT EXISTS ballots (
      participant_id TEXT PRIMARY KEY REFERENCES participants(id) ON DELETE CASCADE,
@@ -50,7 +48,6 @@ const STATEMENTS = [
      created_at     TEXT NOT NULL,
      UNIQUE (participant_id, project_id)
    )`,
-  `CREATE INDEX IF NOT EXISTS idx_votes_project ON votes (project_id)`,
 
   `CREATE TABLE IF NOT EXISTS settings (
      key   TEXT PRIMARY KEY,
@@ -64,8 +61,27 @@ const STATEMENTS = [
  */
 const ADDED_COLUMNS = [
   { table: 'projects', column: 'summary', definition: 'TEXT' },
-  { table: 'projects', column: 'published', definition: 'INTEGER NOT NULL DEFAULT 0' },
+  {
+    table: 'projects',
+    column: 'published',
+    definition: 'INTEGER NOT NULL DEFAULT 0',
+    // Les visions creees avant l'ecran de validation etaient publiees des que
+    // l'image etait prete : elles le restent, sans quoi elles disparaitraient
+    // de la galerie au premier demarrage de cette version.
+    backfill: "UPDATE projects SET published = 1 WHERE status = 'ready'",
+  },
   { table: 'projects', column: 'render_count', definition: 'INTEGER NOT NULL DEFAULT 0' },
 ];
 
-module.exports = { STATEMENTS, ADDED_COLUMNS };
+/**
+ * Index crees APRES l'ajout des colonnes manquantes : certains portent sur
+ * des colonnes apparues apres la mise en service, absentes d'une base deja
+ * existante au moment ou les tables sont declarees.
+ */
+const INDEXES = [
+  `CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status, hidden, published)`,
+  `CREATE INDEX IF NOT EXISTS idx_projects_created ON projects (created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_votes_project ON votes (project_id)`,
+];
+
+module.exports = { TABLES, INDEXES, ADDED_COLUMNS };
