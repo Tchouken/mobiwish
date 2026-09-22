@@ -26,6 +26,14 @@
       <p class="notice notice--info hidden" id="banner"></p>
     </section>
 
+    <!-- Recherche : la galerie compte plusieurs centaines de visions. -->
+    <div class="search-row">
+      <label class="sr-only" for="search">Rechercher une vision</label>
+      <input id="search" type="search" inputmode="search" autocomplete="off" maxlength="80"
+             placeholder="Rechercher un projet, un collègue…" />
+      <button class="search-clear hidden" id="search-clear" type="button" aria-label="Effacer la recherche">✕</button>
+    </div>
+
     <div class="gallery" id="gallery" aria-live="polite"></div>
     <p class="center muted hidden" id="empty">Aucun projet pour le moment. Les premières créations arrivent bientôt !</p>
 

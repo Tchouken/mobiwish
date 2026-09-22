@@ -16,6 +16,25 @@
 .intro { padding: 1.5rem 0 1rem; }
 .intro h1 { font-size: clamp(1.5rem, 5.5vw, 2.1rem); }
 
+/* Recherche de la galerie : pleine largeur au telephone, bouton d'effacement
+   dans le champ. */
+.search-row { position: relative; margin: 0 0 1.25rem; }
+.search-row input {
+  width: 100%; font: inherit; font-size: 1rem;
+  padding: .8rem 2.6rem .8rem 1rem;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--paper); color: var(--ink);
+  -webkit-appearance: none; appearance: none;
+}
+.search-row input::-webkit-search-cancel-button { display: none; }
+.search-row input:focus-visible { outline: 3px solid var(--brand); outline-offset: 1px; border-color: transparent; }
+.search-clear {
+  position: absolute; top: 50%; right: .5rem; transform: translateY(-50%);
+  width: 2rem; height: 2rem; border: 0; border-radius: 50%;
+  background: var(--sand); color: var(--ink-soft);
+  font: inherit; font-size: .9rem; line-height: 1; cursor: pointer;
+}
+
 .gallery {
   display: grid; gap: 1rem;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

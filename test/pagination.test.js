@@ -179,3 +179,52 @@ test('console : le joker d’une recherche est pris au pied de la lettre', async
   const { body } = await server.request('/api/admin/state?q=%25', { admin: ADMIN });
   assert.equal(body.projectsTotal, 0);
 });
+
+test('galerie : la recherche porte sur toute la journee, pas sur la tranche chargee', async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+
+  // Creee en premier, donc hors de la premiere tranche de la galerie.
+  const potager = await addVision(server, {
+    title: 'Le toit nourricier',
+    answer: 'Un potager partage sur le toit du siege.',
+    firstName: 'Élodie',
+    lastName: 'Marchand',
+  });
+  await seed(server, 24);
+
+  const tranche = (await server.request('/api/projects')).body;
+  assert.ok(!tranche.projects.some((p) => p.id === potager), 'le projet vise n’est pas dans la premiere tranche');
+
+  const parTitre = (await server.request('/api/projects?q=NOURRICIER')).body;
+  assert.deepEqual(parTitre.projects.map((p) => p.id), [potager]);
+  assert.equal(parTitre.total, 1, 'le total suit la recherche');
+  assert.equal(parTitre.eventTotal, 25, 'le total de la journee reste affichable');
+
+  const parAuteur = (await server.request('/api/projects?q=marchand')).body;
+  assert.deepEqual(parAuteur.projects.map((p) => p.id), [potager], 'on retrouve la vision d’un collegue par son nom');
+});
+
+test('galerie : une recherche sans resultat ne renvoie pas la premiere tranche', async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  await seed(server, 25);
+
+  const { body } = await server.request('/api/projects?q=zzz-introuvable');
+  assert.deepEqual(body.projects, []);
+  assert.equal(body.total, 0);
+  assert.equal(body.eventTotal, 25);
+});
+
+test('galerie : une recherche se parcourt aussi par tranches', async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  await seed(server, 25); // toutes s'appellent « Vision NN »
+
+  const premiere = (await server.request('/api/projects?q=vision&limit=20&offset=0')).body;
+  const seconde = (await server.request('/api/projects?q=vision&limit=20&offset=20')).body;
+  assert.equal(premiere.total, 25);
+  assert.equal(premiere.projects.length, 20);
+  assert.equal(seconde.projects.length, 5);
+  assert.equal(new Set([...premiere.projects, ...seconde.projects].map((p) => p.id)).size, 25);
+});

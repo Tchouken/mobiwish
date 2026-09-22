@@ -322,11 +322,15 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
       // suivantes a la demande. `total` lui dit quand s'arreter.
       const limit = intParam(req.query.limit, { fallback: PAGE_SIZE, min: 1, max: 500 });
       const offset = intParam(req.query.offset, { fallback: 0, min: 0, max: 100000 });
+      // Recherche : a plusieurs centaines de visions, retrouver celle d'un
+      // collegue ne doit pas demander de derouler toute la galerie.
+      const search = String(req.query.q || '').slice(0, 120);
 
-      const [showVotes, projects, total, votesPerParticipant, votingOpen] = await Promise.all([
+      const [showVotes, projects, total, eventTotal, votesPerParticipant, votingOpen] = await Promise.all([
         store.flag('results_public'),
-        store.gallery({ limit, offset }),
-        store.galleryTotal(),
+        store.gallery({ limit, offset, search }),
+        store.galleryTotal({ search }),
+        search ? store.galleryTotal() : null,
         store.votesPerParticipant(),
         store.flag('voting_open'),
       ]);
@@ -334,6 +338,9 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
       res.json({
         projects: projects.map((row) => publicProject(row, { showVotes })),
         total,
+        // Total de l'evenement, pour dire « 3 sur 137 » pendant une recherche.
+        eventTotal: eventTotal === null ? total : eventTotal,
+        search,
         limit,
         offset,
         votesPerParticipant,

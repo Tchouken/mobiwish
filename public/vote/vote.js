@@ -19,6 +19,8 @@
     detailId: null,
     loaded: PAGE_SIZE,
     total: 0,
+    eventTotal: 0,
+    search: '',
   };
 
   // --- Chargement ---------------------------------------------------------
@@ -36,10 +38,14 @@
       : 'Les votes sont fermés. Vous pouvez parcourir la galerie et consulter le classement.';
   }
 
+  const query = (params) =>
+    `/projects?${params}${state.search ? `&q=${encodeURIComponent(state.search)}` : ''}`;
+
   async function refreshProjects() {
-    const data = await api(`/projects?limit=${state.loaded}&offset=0`, { token: null });
+    const data = await api(query(`limit=${state.loaded}&offset=0`), { token: null });
     state.projects = data.projects;
     state.total = data.total;
+    state.eventTotal = data.eventTotal;
     state.max = data.votesPerParticipant;
     render();
   }
@@ -49,10 +55,11 @@
     const btn = el('btn-more');
     btn.disabled = true;
     try {
-      const data = await api(`/projects?limit=${PAGE_SIZE}&offset=${state.projects.length}`, { token: null });
+      const data = await api(query(`limit=${PAGE_SIZE}&offset=${state.projects.length}`), { token: null });
       const known = new Set(state.projects.map((p) => p.id));
       state.projects = state.projects.concat(data.projects.filter((p) => !known.has(p.id)));
       state.total = data.total;
+      state.eventTotal = data.eventTotal;
       state.loaded = state.projects.length;
       render();
     } finally {
@@ -61,6 +68,32 @@
   }
 
   el('btn-more').addEventListener('click', () => loadMore().catch(() => {}));
+
+  /**
+   * Recherche : la galerie repart d'une tranche, la selection deja faite
+   * n'est pas touchee — elle vit en memoire, pas dans les cartes affichees.
+   */
+  let searchTimer;
+  el('search').addEventListener('input', (evt) => {
+    const value = evt.target.value;
+    el('search-clear').classList.toggle('hidden', value === '');
+    clearTimeout(searchTimer);
+    // Une requete par frappe inonderait le serveur : on attend la fin du mot.
+    searchTimer = setTimeout(() => {
+      state.search = value.trim();
+      state.loaded = PAGE_SIZE;
+      refreshProjects().catch(() => {});
+    }, 250);
+  });
+
+  el('search-clear').addEventListener('click', () => {
+    el('search').value = '';
+    el('search-clear').classList.add('hidden');
+    state.search = '';
+    state.loaded = PAGE_SIZE;
+    refreshProjects().catch(() => {});
+    el('search').focus();
+  });
 
   async function refreshMe() {
     if (!store.token) return;
@@ -88,6 +121,9 @@
     const showVotes = state.config?.resultsPublic !== false;
 
     el('empty').classList.toggle('hidden', state.projects.length > 0);
+    el('empty').textContent = state.search
+      ? `Aucune vision ne correspond à « ${state.search} ».`
+      : 'Aucun projet pour le moment. Les premières créations arrivent bientôt !';
     gallery.innerHTML = state.projects
       .map((p) => {
         const selected = state.selected.has(p.id);
@@ -116,9 +152,15 @@
     el('more').classList.toggle('hidden', state.projects.length === 0);
     el('btn-more').hidden = reste === 0;
     el('btn-more').textContent = `Voir ${Math.min(PAGE_SIZE, reste)} ${reste > 1 ? 'projets' : 'projet'} de plus`;
-    el('more-count').textContent = state.total
-      ? `${state.projects.length} sur ${plural(state.total, 'projet', 'projets')}`
-      : '';
+
+    if (!state.total) {
+      el('more-count').textContent = '';
+    } else if (state.search) {
+      el('more-count').textContent =
+        `${state.projects.length} sur ${plural(state.total, 'résultat', 'résultats')} · ${state.eventTotal} projets au total`;
+    } else {
+      el('more-count').textContent = `${state.projects.length} sur ${plural(state.total, 'projet', 'projets')}`;
+    }
   }
 
   function renderVotebar() {
