@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------
    Ecran evenement, version 2.
    Gauche  : diaporama en boucle des dix dernieres visions publiees,
-             une toutes les deux secondes.
+             une toutes les cinq secondes.
    Droite  : le podium des trois premiers, mis a jour en direct.
    Bas     : les metriques de la journee et le QR code du vote.
 ------------------------------------------------------------------- */
@@ -10,7 +10,7 @@
 
   const { api, live, esc, el, thumb, images } = window.MW;
 
-  const SLIDE_MS = 2000;
+  const SLIDE_MS = 5000;
   const MAX_SLIDES = 10;
   const MEDALS = ['🥇', '🥈', '🥉'];
 

@@ -6,8 +6,11 @@
   const TOKEN_KEY = 'mobiwish.admin';
 
   let adminToken = sessionStorage.getItem(TOKEN_KEY) || '';
-  let state = { settings: {}, projects: [], stats: {} };
+  let state = { settings: {}, projects: [], stats: {}, page: 1, pages: 1, projectsTotal: 0 };
+  // Page et recherche sont envoyees au serveur : la recherche porte sur
+  // l'evenement entier, pas sur les vingt lignes affichees.
   let filter = '';
+  let page = 1;
 
   const admin = (path, options = {}) =>
     api(`/admin${path}`, { ...options, token: null, headers: { 'x-admin-token': adminToken, ...(options.headers || {}) } });
@@ -57,8 +60,10 @@
 
   // --- Chargement ---------------------------------------------------------
   async function load() {
-    const data = await admin('/state');
+    const query = `?page=${page}&q=${encodeURIComponent(filter.trim())}`;
+    const data = await admin(`/state${query}`);
     state = data;
+    page = data.page;
     el('provider-badge').textContent = `images : ${data.imageProvider}`;
     el('vote-link').textContent = data.voteUrl;
     el('vote-link').href = data.voteUrl;
@@ -102,10 +107,7 @@
   }
 
   function renderProjects() {
-    const needle = filter.trim().toLowerCase();
-    const rows = state.projects.filter(
-      (p) => !needle || `${p.title} ${p.authorFullName} ${p.answer}`.toLowerCase().includes(needle)
-    );
+    const rows = state.projects;
 
     el('projects').innerHTML = rows.length
       ? rows
@@ -130,8 +132,33 @@
       </tr>`
           )
           .join('')
-      : '<tr><td colspan="5" class="muted">Aucun projet.</td></tr>';
+      : `<tr><td colspan="5" class="muted">${filter.trim() ? 'Aucun projet pour cette recherche.' : 'Aucun projet.'}</td></tr>`;
+
+    renderPager();
   }
+
+  function renderPager() {
+    const total = state.projectsTotal || 0;
+    const premier = total === 0 ? 0 : (state.page - 1) * state.perPage + 1;
+    const dernier = Math.min(state.page * state.perPage, total);
+
+    el('pager').hidden = total === 0;
+    el('page-prev').disabled = state.page <= 1;
+    el('page-next').disabled = state.page >= state.pages;
+    el('page-label').textContent = total
+      ? `${premier}–${dernier} sur ${total} projet${total > 1 ? 's' : ''} · page ${state.page}/${state.pages}`
+      : '';
+  }
+
+  function goToPage(n) {
+    const cible = Math.min(Math.max(n, 1), state.pages || 1);
+    if (cible === state.page) return;
+    page = cible;
+    load().catch((err) => alert(err.message));
+  }
+
+  el('page-prev').addEventListener('click', () => goToPage(state.page - 1));
+  el('page-next').addEventListener('click', () => goToPage(state.page + 1));
 
   function statusBadge(p) {
     if (p.hidden) return '<span class="badge badge--off">masqué</span>';
@@ -188,9 +215,13 @@
     }
   });
 
+  let searchTimer;
   el('search').addEventListener('input', (evt) => {
     filter = evt.target.value;
-    renderProjects();
+    page = 1;
+    clearTimeout(searchTimer);
+    // Une requete par frappe inonderait la base : on attend la fin du mot.
+    searchTimer = setTimeout(() => load().catch(() => {}), 250);
   });
 
   el('btn-export').addEventListener('click', () => {

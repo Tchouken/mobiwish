@@ -55,6 +55,12 @@
 }
 .project[aria-pressed="true"] .tick { display: flex; }
 
+/* Chargement par tranches : le compteur dit ou l'on en est, le bouton
+   apporte la suite. La barre de vote flottante recouvre le bas de page,
+   d'ou la marge basse. */
+.more { margin: 1.5rem auto 5rem; max-width: 26rem; display: grid; gap: .6rem; }
+.more p { margin: 0; font-size: .9rem; }
+
 .votebar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
   background: var(--paper); border-top: 1px solid var(--line);

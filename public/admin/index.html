@@ -80,7 +80,8 @@
             <div>
               <p><strong>Vote mobile</strong><br /><a id="vote-link" href="/vote" target="_blank" rel="noopener"></a></p>
               <p><strong>Borne</strong><br /><a href="/kiosk" target="_blank" rel="noopener">/kiosk</a></p>
-              <p><strong>Écran</strong><br /><a href="/display" target="_blank" rel="noopener">/display</a></p>
+              <p><strong>Écran</strong><br /><a href="/display" target="_blank" rel="noopener">/display</a>
+                 · <a href="/display2" target="_blank" rel="noopener">/display2</a></p>
             </div>
           </div>
           <div class="row">
@@ -103,6 +104,13 @@
             </thead>
             <tbody id="projects"></tbody>
           </table>
+        </div>
+        <!-- Pagination : la recherche et le tri sont faits par le serveur,
+             la console ne recoit que la page affichee. -->
+        <div class="pager" id="pager">
+          <button class="btn btn--quiet btn--sm" id="page-prev" type="button">← Précédent</button>
+          <span class="faint" id="page-label"></span>
+          <button class="btn btn--quiet btn--sm" id="page-next" type="button">Suivant →</button>
         </div>
       </section>
     </main>

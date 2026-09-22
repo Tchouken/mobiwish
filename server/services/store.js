@@ -14,6 +14,36 @@ const toInt = (value, fallback = 0) => {
 };
 
 /**
+ * Criteres communs a la galerie et a son total : meme filtre, meme
+ * recherche, donc meme clause — sans quoi la pagination compterait autre
+ * chose que ce qu'elle affiche.
+ *
+ * `LOWER(...) LIKE` plutot que `ILIKE` ou le LIKE de SQLite : c'est la
+ * seule forme insensible a la casse sur les deux moteurs.
+ */
+function galleryFilter({ includeHidden = false, includePending = false, search = '' } = {}) {
+  const statuses = includePending ? ['ready', ...PENDING, 'failed'] : ['ready'];
+  const parts = [`pr.status IN (${statuses.map(() => '?').join(', ')})`];
+  const params = [...statuses];
+
+  if (!includeHidden) parts.push('pr.hidden = 0 AND pr.published = 1');
+
+  const needle = String(search || '').trim().toLowerCase();
+  if (needle) {
+    // `ESCAPE` est indispensable : SQLite n'a pas de caractere d'echappement
+    // par defaut, un `%` saisi par l'animateur deviendrait un joker.
+    const like = (column) => `LOWER(${column}) LIKE ? ESCAPE '\\'`;
+    parts.push(
+      `(${[like('pr.title'), like('pr.answer'), like("COALESCE(pr.summary, '')"), like('pa.first_name'), like('pa.last_name')].join(' OR ')})`
+    );
+    const pattern = `%${needle.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
+    params.push(pattern, pattern, pattern, pattern, pattern);
+  }
+
+  return { clause: parts.join(' AND '), params };
+}
+
+/**
  * Toutes les requetes de l'application. Ecrites une seule fois, executees
  * indifferemment sur SQLite (installation sur place) ou PostgreSQL (Vercel).
  */
@@ -181,20 +211,36 @@ class Store {
     };
   }
 
-  /** Galerie : projets publies, du plus recent au plus ancien. */
-  async gallery({ includeHidden = false, includePending = false, limit = 500 } = {}) {
-    const statuses = includePending ? ['ready', ...PENDING, 'failed'] : ['ready'];
-    const placeholders = statuses.map(() => '?').join(', ');
+  /**
+   * Galerie : projets publies, du plus recent au plus ancien, par tranches.
+   * A plusieurs centaines de visions, ni le telephone d'un votant ni le
+   * tableau de la console n'ont a tout recevoir d'un coup — d'ou `limit`,
+   * `offset`, et le total renvoye separement par `galleryTotal`.
+   */
+  async gallery({ includeHidden = false, includePending = false, limit = 500, offset = 0, search = '' } = {}) {
+    const { clause, params } = galleryFilter({ includeHidden, includePending, search });
     const rows = await this.db.query(
       `SELECT pr.*, pa.first_name, pa.last_name,
               (SELECT COUNT(*) FROM votes v WHERE v.project_id = pr.id) AS votes
        FROM projects pr JOIN participants pa ON pa.id = pr.participant_id
-       WHERE pr.status IN (${placeholders}) ${includeHidden ? '' : 'AND pr.hidden = 0 AND pr.published = 1'}
+       WHERE ${clause}
        ORDER BY pr.created_at DESC
-       LIMIT ?`,
-      [...statuses, limit]
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
     );
     return rows.map((row) => ({ ...row, votes: toInt(row.votes), hidden: toInt(row.hidden) }));
+  }
+
+  /** Nombre total de projets repondant aux memes criteres que `gallery`. */
+  async galleryTotal({ includeHidden = false, includePending = false, search = '' } = {}) {
+    const { clause, params } = galleryFilter({ includeHidden, includePending, search });
+    const rows = await this.db.query(
+      `SELECT COUNT(*) AS n
+       FROM projects pr JOIN participants pa ON pa.id = pr.participant_id
+       WHERE ${clause}`,
+      params
+    );
+    return toInt(rows[0].n);
   }
 
   async projectsOfParticipant(participantId) {

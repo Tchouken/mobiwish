@@ -6,7 +6,7 @@ const config = require('../config');
 const { safeEqual } = require('../util/auth');
 const { HttpError, cleanText, cleanMultiline } = require('../util/validate');
 const { adminProject } = require('../services/serialize');
-const { rankedLeaderboard } = require('./api');
+const { rankedLeaderboard, PAGE_SIZE, intParam } = require('./api');
 
 const BOOLEAN_SETTINGS = ['voting_open', 'kiosk_open', 'allow_self_vote', 'results_public'];
 /** Textes des ecrans, modifiables sans redeploiement. */
@@ -80,17 +80,34 @@ module.exports = function adminRoutes({ store, hub }) {
   router.get(
     '/state',
     route(async (req, res) => {
+      // Tableau des projets pagine et filtre par le serveur : a plusieurs
+      // centaines de visions, la console ne recoit que la page affichee, et
+      // la recherche porte sur l'evenement entier — pas sur la page en cours.
+      const perPage = intParam(req.query.perPage, { fallback: PAGE_SIZE, min: 1, max: 100 });
+      const search = String(req.query.q || '').slice(0, 120);
+      const scope = { includeHidden: true, includePending: true, search };
+      const total = await store.galleryTotal(scope);
+      const pages = Math.max(1, Math.ceil(total / perPage));
+      // Une page devenue vide (suppressions, recherche affinee) ramene a la
+      // derniere page existante plutot qu'a un tableau vide sans explication.
+      const page = Math.min(intParam(req.query.page, { fallback: 1, min: 1, max: 100000 }), pages);
+
       const [settings, stats, leaderboard, projects] = await Promise.all([
         store.settings(),
         store.stats(),
         rankedLeaderboard(store, { includeHidden: true }),
-        store.gallery({ includeHidden: true, includePending: true }),
+        store.gallery({ ...scope, limit: perPage, offset: (page - 1) * perPage }),
       ]);
       res.json({
         settings,
         stats,
         leaderboard,
         projects: projects.map(adminProject),
+        projectsTotal: total,
+        page,
+        pages,
+        perPage,
+        search,
         voteUrl: `${config.publicUrl}/vote`,
         imageProvider: config.image.provider,
         hosting: {

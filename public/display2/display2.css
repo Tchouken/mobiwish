@@ -49,7 +49,7 @@
   will-change: opacity, transform;
 }
 /* Un leger mouvement de camera : l'ecran ne se fige jamais. */
-.slide.is-on { opacity: 1; animation: drift 6s ease-out both; }
+.slide.is-on { opacity: 1; animation: drift 9s ease-out both; }
 @keyframes drift {
   from { transform: scale(1.02); }
   to { transform: scale(1.09); }

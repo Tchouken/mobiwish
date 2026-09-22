@@ -132,3 +132,41 @@ test('postgres : schema, projets, votes, classement et export', async (t) => {
     projectsHidden: 0, voters: 0, votes: 0,
   });
 });
+
+test('postgres : pagination et recherche de la galerie', async (t) => {
+  const driver = await pgliteDriver();
+  t.after(() => driver.close());
+
+  await ensureSchema(driver);
+  const store = new Store(driver, config.defaults);
+  await store.seedSettings();
+
+  const auteur = await store.upsertParticipant({ firstName: 'Élodie', lastName: 'Marchand', email: 'elodie@leboncoin.fr' });
+  const ids = [];
+  for (let i = 1; i <= 25; i += 1) {
+    const projet = await store.createProject({
+      participantId: auteur.id,
+      question: 'Question du jour ?',
+      answer: i === 7 ? 'Un potager partage sur le toit du siege.' : `Une idee numero ${i}, assez longue.`,
+      title: i === 7 ? 'Le toit nourricier' : `Vision ${i}`,
+      prompt: 'prompt',
+    });
+    await store.markProjectReady(projet.id, { imageUrl: `https://blob.example/${i}.png`, imageMime: 'image/png', provider: 'mock' });
+    await store.publishProject(projet.id);
+    ids.push(projet.id);
+    await new Promise((resolve) => setTimeout(resolve, 3));
+  }
+
+  assert.equal(await store.galleryTotal(), 25);
+  assert.equal((await store.gallery({ limit: 20, offset: 0 })).length, 20);
+  const reste = await store.gallery({ limit: 20, offset: 20 });
+  assert.equal(reste.length, 5);
+  assert.deepEqual(reste.map((r) => r.id), ids.slice(0, 5).reverse(), 'la derniere tranche porte les plus anciennes');
+
+  // Recherche : insensible a la casse sur PostgreSQL aussi, ou `LIKE` ne
+  // l'est pas par defaut — contrairement a SQLite.
+  assert.equal(await store.galleryTotal({ search: 'NOURRICIER' }), 1);
+  assert.equal((await store.gallery({ search: 'potager' }))[0].title, 'Le toit nourricier');
+  assert.equal(await store.galleryTotal({ search: 'marchand' }), 25, 'la recherche porte aussi sur l’auteur');
+  assert.equal(await store.galleryTotal({ search: '%' }), 0, 'le joker est pris au pied de la lettre');
+});

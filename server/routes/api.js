@@ -30,6 +30,16 @@ async function voteQrDataUri(target) {
   return qrCache.get(target);
 }
 
+/** Taille d'une tranche de galerie, cote vote comme cote console. */
+const PAGE_SIZE = 20;
+
+/** Entier d'un parametre d'URL, ramene dans des bornes sures. */
+function intParam(value, { fallback, min, max }) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n)) return fallback;
+  return Math.min(Math.max(n, min), max);
+}
+
 /** Cache CDN des reponses publiques : absorbe les pics de consultation. */
 function publicCache(res) {
   const seconds = config.runtime.publicCacheSeconds;
@@ -308,15 +318,24 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
   router.get(
     '/projects',
     route(async (req, res) => {
-      const [showVotes, projects, votesPerParticipant, votingOpen] = await Promise.all([
+      // Galerie paginee : la page de vote charge une tranche, puis les
+      // suivantes a la demande. `total` lui dit quand s'arreter.
+      const limit = intParam(req.query.limit, { fallback: PAGE_SIZE, min: 1, max: 500 });
+      const offset = intParam(req.query.offset, { fallback: 0, min: 0, max: 100000 });
+
+      const [showVotes, projects, total, votesPerParticipant, votingOpen] = await Promise.all([
         store.flag('results_public'),
-        store.gallery(),
+        store.gallery({ limit, offset }),
+        store.galleryTotal(),
         store.votesPerParticipant(),
         store.flag('voting_open'),
       ]);
       publicCache(res);
       res.json({
         projects: projects.map((row) => publicProject(row, { showVotes })),
+        total,
+        limit,
+        offset,
         votesPerParticipant,
         votingOpen,
       });
@@ -435,3 +454,5 @@ async function rankedLeaderboard(store, options = {}) {
 }
 
 module.exports.rankedLeaderboard = rankedLeaderboard;
+module.exports.PAGE_SIZE = PAGE_SIZE;
+module.exports.intParam = intParam;

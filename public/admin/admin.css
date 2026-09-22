@@ -22,6 +22,11 @@ body { background: var(--sand); padding-bottom: 4rem; }
 .copy-block summary { cursor: pointer; font-weight: 650; padding: .25rem 0; }
 .copy-block[open] summary { margin-bottom: .7rem; }
 .table-wrap { overflow-x: auto; }
+
+/* Pagination du tableau des projets. */
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+.pager span { font-size: .9rem; font-variant-numeric: tabular-nums; }
+.pager button[disabled] { opacity: .4; cursor: default; }
 .table { width: 100%; border-collapse: collapse; font-size: .95rem; }
 .table th, .table td { text-align: left; padding: .7rem .6rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .table th { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); }

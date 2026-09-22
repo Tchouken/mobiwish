@@ -4,6 +4,12 @@
 
   const { api, store, live, esc, el, plural, thumb, images } = window.MW;
 
+  // Taille d'une tranche de galerie. `loaded` est la fenetre actuellement
+  // affichee : a chaque rafraichissement temps reel on redemande cette meme
+  // fenetre depuis le debut, ce qui evite les doublons quand de nouvelles
+  // visions arrivent en tete pendant la consultation.
+  const PAGE_SIZE = 20;
+
   const state = {
     config: null,
     projects: [],
@@ -11,6 +17,8 @@
     hasVoted: false,
     max: 3,
     detailId: null,
+    loaded: PAGE_SIZE,
+    total: 0,
   };
 
   // --- Chargement ---------------------------------------------------------
@@ -29,11 +37,30 @@
   }
 
   async function refreshProjects() {
-    const data = await api('/projects', { token: null });
+    const data = await api(`/projects?limit=${state.loaded}&offset=0`, { token: null });
     state.projects = data.projects;
+    state.total = data.total;
     state.max = data.votesPerParticipant;
     render();
   }
+
+  /** Tranche suivante, ajoutee a la suite sans recharger ce qui est deja la. */
+  async function loadMore() {
+    const btn = el('btn-more');
+    btn.disabled = true;
+    try {
+      const data = await api(`/projects?limit=${PAGE_SIZE}&offset=${state.projects.length}`, { token: null });
+      const known = new Set(state.projects.map((p) => p.id));
+      state.projects = state.projects.concat(data.projects.filter((p) => !known.has(p.id)));
+      state.total = data.total;
+      state.loaded = state.projects.length;
+      render();
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  el('btn-more').addEventListener('click', () => loadMore().catch(() => {}));
 
   async function refreshMe() {
     if (!store.token) return;
@@ -80,7 +107,18 @@
       })
       .join('');
 
+    renderMore();
     renderVotebar();
+  }
+
+  function renderMore() {
+    const reste = Math.max(0, state.total - state.projects.length);
+    el('more').classList.toggle('hidden', state.projects.length === 0);
+    el('btn-more').hidden = reste === 0;
+    el('btn-more').textContent = `Voir ${Math.min(PAGE_SIZE, reste)} ${reste > 1 ? 'projets' : 'projet'} de plus`;
+    el('more-count').textContent = state.total
+      ? `${state.projects.length} sur ${plural(state.total, 'projet', 'projets')}`
+      : '';
   }
 
   function renderVotebar() {
