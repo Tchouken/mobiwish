@@ -41,7 +41,13 @@ async function runGeneration({ store, hub, project, logger = console }) {
     const summary = project.summary
       ? null
       : await summarizeVision(
-          { title: project.title, answer: project.answer, question: project.question },
+          {
+            title: project.title,
+            answer: project.answer,
+            question: project.question,
+            // L'auteur se relit sur la borne : la reformulation le nomme.
+            firstName: project.first_name,
+          },
           { logger }
         );
 

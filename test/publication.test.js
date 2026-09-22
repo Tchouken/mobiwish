@@ -129,9 +129,9 @@ test('textes des ecrans : exposes aux interfaces et modifiables depuis la consol
   t.after(() => server.close());
 
   const config = await server.request('/api/config');
-  assert.equal(config.body.copy.kioskHeadline, 'Imaginez leboncoin en 2035');
+  assert.equal(config.body.copy.kioskHeadline, 'Imaginez leboncoin en 2046');
   assert.equal(config.body.copy.kioskCta, 'Créer ma vision');
-  assert.equal(config.body.copy.voteHeadline, 'Votez pour leboncoin en 2035');
+  assert.equal(config.body.copy.voteHeadline, 'Votez pour leboncoin en 2046');
   assert.ok(config.body.copy.displayIntro.length > 10);
 
   const updated = await server.request('/api/admin/settings', {

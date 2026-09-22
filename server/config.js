@@ -103,9 +103,9 @@ const config = {
 
   // Valeurs par defaut des reglages modifiables en cours de journee depuis /admin
   defaults: {
-    event_name: '20 ANS ENSEMBLE — CAP SUR 2035',
+    event_name: '20 ANS ENSEMBLE — CAP SUR 2046',
     // Borne
-    kiosk_headline: 'Imaginez leboncoin en 2035',
+    kiosk_headline: 'Imaginez leboncoin en 2046',
     kiosk_intro:
       'À quoi ressemblera leboncoin demain ? Décrivez votre vision : un nouveau service, un nouvel usage, une nouvelle expérience… ou une idée complètement inattendue.',
     kiosk_cta: 'Créer ma vision',
@@ -113,11 +113,11 @@ const config = {
     question:
       'À quoi ressemblera leboncoin demain ? Décrivez votre vision : un nouveau service, un nouvel usage, une nouvelle expérience… ou une idée complètement inattendue.',
     // Vote mobile
-    vote_headline: 'Votez pour leboncoin en 2035',
+    vote_headline: 'Votez pour leboncoin en 2046',
     vote_intro:
       'Découvrez les visions imaginées par vos collègues et votez pour celles que vous aimeriez voir devenir réalité.',
     // Écran de l'événement
-    display_headline: 'Votez pour leboncoin en 2035',
+    display_headline: 'Votez pour leboncoin en 2046',
     display_intro:
       'Découvrez les visions imaginées par vos collègues et votez pour celles que vous aimeriez voir devenir réalité.',
     // Nombre maximum de générations d'image par vision (reprises comprises)
