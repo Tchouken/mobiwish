@@ -120,12 +120,12 @@ test('repli : le generateur local prend le relais si le fournisseur echoue', asy
 });
 
 test('prompt : sujet, interdits, puis rendu impose en dernier', () => {
-  const prompt = buildPrompt('Une place de marche interne des competences.', { question: 'Quelle innovation pour 2035 ?' });
+  const prompt = buildPrompt('Une place de marche interne des competences.', { question: 'Quelle innovation pour 2046 ?' });
   const positions = ['Sujet :', 'Interdits absolus :', 'Rendu impose :'].map((marker) => prompt.indexOf(marker));
   assert.ok(positions.every((p) => p >= 0), 'les trois blocs doivent etre presents');
   assert.deepEqual(positions.slice().sort((a, b) => a - b), positions, 'l’ordre des blocs conditionne le respect de la charte');
   assert.match(prompt, /aucun texte/);
-  assert.match(prompt, /Quelle innovation pour 2035/);
+  assert.match(prompt, /Quelle innovation pour 2046/);
 
   assert.equal(buildTitle('Une place de marche interne des competences ouverte a tous'), 'Une place de marche interne des competences…');
   assert.equal(buildTitle(''), 'Projet sans titre');

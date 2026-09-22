@@ -137,13 +137,13 @@ test('textes des ecrans : exposes aux interfaces et modifiables depuis la consol
   const updated = await server.request('/api/admin/settings', {
     method: 'PUT',
     admin: process.env.ADMIN_TOKEN || 'test-admin',
-    body: { kiosk_cta: 'Imaginer ma vision', vote_headline: 'Votez pour 2035' },
+    body: { kiosk_cta: 'Imaginer ma vision', vote_headline: 'Votez pour 2046' },
   });
   assert.equal(updated.status, 200);
 
   const after = await server.request('/api/config');
   assert.equal(after.body.copy.kioskCta, 'Imaginer ma vision');
-  assert.equal(after.body.copy.voteHeadline, 'Votez pour 2035');
+  assert.equal(after.body.copy.voteHeadline, 'Votez pour 2046');
 });
 
 test('QR code : livre avec la configuration, sans dependre d’une requete d’image', async (t) => {

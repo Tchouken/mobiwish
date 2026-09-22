@@ -92,3 +92,45 @@ test('migration : rejouee sans effet sur une base deja a jour', async (t) => {
   const store = new Store(driver, config.defaults);
   assert.equal((await store.gallery()).length, 1, 'la reprise des donnees ne doit pas etre rejouee');
 });
+
+test('correction : l’horizon 2035 deja enregistre devient 2046', async (t) => {
+  const driver = await basePrecedente();
+  t.after(() => driver.close());
+  await ensureSchema(driver);
+
+  const store = new Store(driver, config.defaults);
+  // Etat de la production : les textes ont ete semes avec l'ancienne date.
+  await store.setSettings({
+    event_name: '20 ANS ENSEMBLE — CAP SUR 2035',
+    kiosk_headline: 'Imaginez leboncoin en 2035',
+    vote_headline: 'Votez pour leboncoin en 2035',
+    display_headline: 'Votez pour leboncoin en 2035',
+    kiosk_cta: 'Créer ma vision',
+  });
+
+  await store.seedSettings();
+  await store.applyCorrections();
+
+  const settings = await store.settings();
+  assert.equal(settings.event_name, '20 ANS ENSEMBLE — CAP SUR 2046');
+  assert.equal(settings.kiosk_headline, 'Imaginez leboncoin en 2046');
+  assert.equal(settings.vote_headline, 'Votez pour leboncoin en 2046');
+  assert.equal(settings.display_headline, 'Votez pour leboncoin en 2046');
+  assert.equal(settings.kiosk_cta, 'Créer ma vision', 'les textes sans date ne bougent pas');
+});
+
+test('correction : appliquee une seule fois, un choix ulterieur est respecte', async (t) => {
+  const driver = await basePrecedente();
+  t.after(() => driver.close());
+  await ensureSchema(driver);
+
+  const store = new Store(driver, config.defaults);
+  await store.setSettings({ kiosk_headline: 'Imaginez leboncoin en 2035' });
+  await store.applyCorrections();
+  assert.equal((await store.settings()).kiosk_headline, 'Imaginez leboncoin en 2046');
+
+  // L'animateur ecrit volontairement 2035 apres coup : personne ne le corrige.
+  await store.setSettings({ kiosk_headline: 'Rétrospective 2035' });
+  await store.applyCorrections();
+  assert.equal((await store.settings()).kiosk_headline, 'Rétrospective 2035');
+});

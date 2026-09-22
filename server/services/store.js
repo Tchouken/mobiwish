@@ -14,6 +14,13 @@ const toInt = (value, fallback = 0) => {
 };
 
 /**
+ * Corrections a appliquer une seule fois aux textes deja en base. Le
+ * marqueur est lui-meme un reglage : il survit aux redeploiements sans
+ * demander de migration.
+ */
+const CORRECTIONS = [{ marker: 'correction_horizon_2046', from: '2035', to: '2046' }];
+
+/**
  * Criteres communs a la galerie et a son total : meme filtre, meme
  * recherche, donc meme clause — sans quoi la pagination compterait autre
  * chose que ce qu'elle affiche.
@@ -60,6 +67,31 @@ class Store {
         key,
         String(value),
       ]);
+    }
+  }
+
+  /**
+   * Corrections ponctuelles des textes deja enregistres.
+   *
+   * Une valeur par defaut n'ecrase jamais un reglage existant : c'est ce qui
+   * protege ce qui a ete saisi depuis la console. Mais quand un texte est
+   * simplement faux pour tout le monde — ici l'horizon de l'evenement, 2035
+   * au lieu de 2046 — il faut bien le corriger la ou il est deja ecrit.
+   * Chaque correction ne s'applique qu'une fois, et le note : un animateur
+   * qui reecrirait « 2035 » sciemment plus tard ne serait pas contredit.
+   */
+  async applyCorrections() {
+    for (const { marker, from, to } of CORRECTIONS) {
+      if (await this.setting(marker, '')) continue;
+
+      const rows = await this.db.query('SELECT key, value FROM settings', []);
+      const patch = {};
+      for (const row of rows) {
+        const value = String(row.value);
+        if (value.includes(from)) patch[row.key] = value.split(from).join(to);
+      }
+      patch[marker] = '1';
+      await this.setSettings(patch);
     }
   }
 

@@ -21,6 +21,7 @@ async function getStore(options = {}) {
     cached.ready = (async () => {
       if (config.database.autoMigrate) await ensureSchema(cached.driver);
       await cached.store.seedSettings();
+      await cached.store.applyCorrections();
     })();
   }
 

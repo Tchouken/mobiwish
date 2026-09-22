@@ -34,6 +34,7 @@ async function startServer({ generate, renderMode = 'inline', realtime = 'sse' }
 
   const store = new Store(driver, config.defaults);
   await store.seedSettings();
+  await store.applyCorrections();
 
   const hub = new EventHub();
   const pending = [];

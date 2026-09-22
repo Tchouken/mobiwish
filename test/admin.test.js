@@ -22,14 +22,14 @@ test('admin : met a jour les reglages et valide les bornes', async (t) => {
   const ok = await server.request('/api/admin/settings', {
     method: 'PUT',
     admin: ADMIN,
-    body: { question: 'Quelle innovation imaginez-vous pour 2035 ?', votes_per_participant: 5, voting_open: false },
+    body: { question: 'Quelle innovation imaginez-vous pour 2046 ?', votes_per_participant: 5, voting_open: false },
   });
   assert.equal(ok.status, 200);
   assert.equal(ok.body.settings.votes_per_participant, '5');
   assert.equal(ok.body.settings.voting_open, '0');
 
   const config = await server.request('/api/config');
-  assert.equal(config.body.question, 'Quelle innovation imaginez-vous pour 2035 ?');
+  assert.equal(config.body.question, 'Quelle innovation imaginez-vous pour 2046 ?');
   assert.equal(config.body.votingOpen, false);
 
   const bad = await server.request('/api/admin/settings', {
