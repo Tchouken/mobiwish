@@ -90,6 +90,7 @@ function createApp({ store, hub = new EventHub(), logger = console, generate } =
   app.get('/kiosk', page('kiosk'));
   app.get('/vote', page('vote'));
   app.get('/display', page('display'));
+  app.get('/display2', page('display2'));
   app.get('/admin', page('admin'));
 
   app.use((req, res, next) => next(new HttpError(404, 'not_found', 'Ressource introuvable.')));

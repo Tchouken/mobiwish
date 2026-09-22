@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Écran événement — Diaporama & podium</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="/shared/theme.css" />
+  <link rel="stylesheet" href="/display2/display2.css" />
+</head>
+<body class="display2">
+  <header class="d2-head">
+    <p class="eyebrow" id="event-name">Journée créative</p>
+    <h1 id="display-headline">…</h1>
+  </header>
+
+  <main class="d2-main">
+
+    <!-- Gauche : les dix dernieres visions, en boucle -->
+    <section class="stage" aria-label="Les dernières visions publiées">
+      <div class="stage-frame">
+        <img class="slide" id="slide-a" alt="" />
+        <img class="slide" id="slide-b" alt="" />
+        <div class="stage-shade" aria-hidden="true"></div>
+
+        <div class="stage-caption" id="stage-caption">
+          <p class="stage-kicker"><span class="dot" aria-hidden="true"></span><span id="slide-kicker">Dernières visions</span></p>
+          <h2 id="slide-title"></h2>
+          <p class="stage-author" id="slide-author"></p>
+          <p class="stage-summary" id="slide-summary"></p>
+        </div>
+
+        <div class="stage-progress" aria-hidden="true"><i id="stage-bar"></i></div>
+        <ol class="stage-dots" id="stage-dots" aria-hidden="true"></ol>
+
+        <p class="stage-empty" id="stage-empty">Les premières visions s’afficheront ici dès la première publication.</p>
+      </div>
+    </section>
+
+    <!-- Droite : le podium -->
+    <aside class="ranking" aria-label="Podium">
+      <div class="ranking-head">
+        <h2>Le podium</h2>
+        <span class="faint" id="ranking-note"></span>
+      </div>
+      <ol class="podium2" id="podium2"></ol>
+      <p class="veil2" id="veil2" hidden>🏆<br />Résultats révélés<br />en fin de journée</p>
+      <p class="ranking-empty" id="ranking-empty" hidden>Le classement s’ouvre au premier vote.</p>
+    </aside>
+
+  </main>
+
+  <!-- Bas de page : les metriques -->
+  <footer class="d2-metrics">
+    <div class="metric"><span id="c-projects">0</span><small>visions créées</small></div>
+    <div class="metric"><span id="c-voters">0</span><small>votants</small></div>
+    <div class="metric"><span id="c-votes">0</span><small>votes exprimés</small></div>
+    <div class="metric"><span id="c-status">—</span><small>statut des votes</small></div>
+    <div class="metric metric--qr">
+      <img id="display-qr" alt="QR code pour accéder au vote" width="104" height="104" />
+      <div class="qr-text">
+        <strong>Scannez pour voter</strong>
+        <span class="faint" id="vote-url"></span>
+        <span class="live" id="live"><i></i> connecté</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/shared/app.js"></script>
+  <script src="/display2/display2.js"></script>
+</body>
+</html>

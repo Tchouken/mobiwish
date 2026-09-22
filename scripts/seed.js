@@ -50,6 +50,9 @@ async function main() {
       status: 'rendering',
     });
     await runGeneration({ store, hub: null, project });
+    // Sur la borne, c'est l'auteur qui valide : sans cette etape, rien
+    // n'entre dans la galerie ni au vote. La repetition doit s'en approcher.
+    await store.publishProject(project.id);
     created.push({ project, participant });
   }
 

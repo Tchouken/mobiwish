@@ -29,8 +29,8 @@ test('routage Vercel : toutes les routes servies par l’application y sont decl
   }
 });
 
-test('routage Vercel : les quatre interfaces sont servies en statique', () => {
-  for (const page of ['/kiosk', '/vote', '/display', '/admin']) {
+test('routage Vercel : les interfaces sont servies en statique', () => {
+  for (const page of ['/kiosk', '/vote', '/display', '/display2', '/admin']) {
     const rule = vercel.rewrites.find((r) => r.source === page);
     assert.ok(rule, `interface absente de vercel.json : ${page}`);
     assert.equal(rule.destination, `${page}/index.html`);
@@ -54,7 +54,7 @@ test('vignettes : toutes les largeurs demandees par les interfaces sont autorise
   const declared = (vercel.images && vercel.images.sizes) || [];
   assert.ok(declared.length, 'vercel.json doit declarer les largeurs de vignettes');
 
-  const clients = ['vote/vote.js', 'display/display.js', 'admin/admin.js'];
+  const clients = ['vote/vote.js', 'display/display.js', 'display2/display2.js', 'admin/admin.js'];
   const widths = new Set();
 
   for (const file of clients) {

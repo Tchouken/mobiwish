@@ -1,0 +1,238 @@
+/* ------------------------------------------------------------------
+   Ecran evenement, version 2 : diaporama des dernieres visions a
+   gauche, podium a droite, metriques en bas. Concu pour une TV ou un
+   videoprojecteur en 16/9, sans aucun defilement.
+------------------------------------------------------------------- */
+.display2 {
+  height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 1.6vh;
+  padding: 2vh 2vw;
+  background:
+    radial-gradient(90rem 50rem at 110% -20%, var(--brand-soft) 0%, transparent 60%),
+    linear-gradient(160deg, #fff 0%, var(--sand) 70%);
+}
+
+/* --- Bandeau ------------------------------------------------------ */
+.d2-head { display: flex; align-items: baseline; gap: 1.2rem; flex-wrap: wrap; }
+.d2-head .eyebrow {
+  margin: 0; font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+  color: var(--brand-dark); font-size: clamp(.75rem, 1vw, 1rem);
+}
+.d2-head h1 { margin: 0; font-size: clamp(1.4rem, 2.6vw, 2.6rem); }
+
+/* --- Corps -------------------------------------------------------- */
+.d2-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
+  gap: 1.4vw;
+  min-height: 0;
+}
+
+/* --- Diaporama ---------------------------------------------------- */
+.stage { min-height: 0; display: flex; }
+.stage-frame {
+  position: relative; flex: 1; min-height: 0;
+  border-radius: var(--radius-l); overflow: hidden;
+  background: var(--ink);
+  box-shadow: var(--shadow-m);
+}
+
+.slide {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity .55s ease;
+  will-change: opacity, transform;
+}
+/* Un leger mouvement de camera : l'ecran ne se fige jamais. */
+.slide.is-on { opacity: 1; animation: drift 6s ease-out both; }
+@keyframes drift {
+  from { transform: scale(1.02); }
+  to { transform: scale(1.09); }
+}
+
+.stage-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(10, 10, 14, .88) 0%, rgba(10, 10, 14, .45) 32%, rgba(10, 10, 14, 0) 62%);
+}
+
+.stage-caption {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: clamp(1rem, 2.4vw, 2.4rem);
+  padding-bottom: clamp(1.6rem, 3vw, 2.8rem);
+  color: #fff;
+  display: grid; gap: .25rem;
+}
+.stage-caption.is-fresh { animation: rise .5s ease both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.stage-kicker {
+  margin: 0 0 .3rem; display: inline-flex; align-items: center; gap: .5rem;
+  font-weight: 800; text-transform: uppercase; letter-spacing: .12em;
+  font-size: clamp(.7rem, .9vw, .95rem); color: var(--brand);
+}
+.stage-kicker .dot {
+  width: .55rem; height: .55rem; border-radius: 50%; background: var(--brand);
+  animation: beat 1.6s ease-in-out infinite;
+}
+@keyframes beat { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.75); } }
+.stage-caption h2 {
+  margin: 0; color: #fff;
+  font-size: clamp(1.4rem, 2.9vw, 3.1rem); line-height: 1.08;
+  text-wrap: balance;
+}
+.stage-author { margin: .1rem 0 0; font-size: clamp(.9rem, 1.25vw, 1.35rem); font-weight: 700; color: rgba(255, 255, 255, .82); }
+.stage-summary {
+  margin: .45rem 0 0; max-width: 46ch;
+  font-size: clamp(.85rem, 1.15vw, 1.25rem); line-height: 1.4;
+  color: rgba(255, 255, 255, .78);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.stage-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255, 255, 255, .18); }
+.stage-progress i { display: block; height: 100%; width: 0; background: var(--brand); }
+.stage-progress i.is-running { animation: sweep linear forwards; }
+@keyframes sweep { from { width: 0; } to { width: 100%; } }
+
+.stage-dots {
+  position: absolute; top: clamp(.8rem, 1.6vw, 1.5rem); right: clamp(.8rem, 1.6vw, 1.5rem);
+  display: flex; gap: .4rem; list-style: none; margin: 0; padding: 0;
+}
+.stage-dots li {
+  width: .5rem; height: .5rem; border-radius: 50%;
+  background: rgba(255, 255, 255, .35); transition: background .3s ease, transform .3s ease;
+}
+.stage-dots li.is-on { background: #fff; transform: scale(1.5); }
+
+.stage-empty {
+  position: absolute; inset: 0; margin: 0;
+  display: none; place-items: center; text-align: center;
+  padding: 2rem; color: rgba(255, 255, 255, .7);
+  font-size: clamp(1rem, 1.6vw, 1.5rem);
+}
+.stage-frame.is-empty { background: linear-gradient(150deg, #2a2a33, var(--ink)); }
+.stage-frame.is-empty .stage-empty { display: grid; }
+.stage-frame.is-empty .stage-shade,
+.stage-frame.is-empty .stage-caption,
+.stage-frame.is-empty .stage-progress,
+.stage-frame.is-empty .stage-dots { display: none; }
+
+/* --- Podium ------------------------------------------------------- */
+.ranking {
+  min-height: 0; display: flex; flex-direction: column; gap: 1vh;
+  background: var(--paper); border-radius: var(--radius-l);
+  padding: clamp(.9rem, 1.4vw, 1.5rem);
+  box-shadow: var(--shadow-s);
+}
+.ranking-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.ranking-head h2 { margin: 0; font-size: clamp(1.1rem, 1.7vw, 1.7rem); }
+.ranking-head span { font-size: clamp(.75rem, .95vw, 1rem); font-weight: 700; }
+
+/* La premiere place occupe plus de place que les deux suivantes : le podium
+   se lit d'un coup d'oeil depuis le fond de la salle. */
+.podium2 { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; display: grid; gap: 1vh; grid-template-rows: 1.32fr 1fr 1fr; }
+.podium2 li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: clamp(.6rem, 1vw, 1.1rem);
+  min-height: 0;
+  background: var(--sand); border-radius: var(--radius-m);
+  padding: clamp(.5rem, .8vw, .9rem);
+  border: 2px solid transparent;
+}
+.podium2 li.is-first { background: var(--brand-soft); border-color: var(--brand); }
+/* Un changement de place se voit : la carte se signale une fois. */
+.podium2 li.is-moved { animation: flash .9s ease both; }
+@keyframes flash {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 110, 20, .55); }
+  35% { transform: scale(1.025); box-shadow: 0 0 0 .75rem rgba(255, 110, 20, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 110, 20, 0); }
+}
+
+/* Largeur imposee, hauteur deduite : la vignette ne peut pas entrainer la
+   carte avec elle, quelle que soit la taille de l'image d'origine. */
+.podium2 .visual { position: relative; display: block; width: clamp(4rem, 7vw, 8.5rem); aspect-ratio: 1; }
+.podium2 img, .podium2 .visual-void {
+  display: block; width: 100%; height: 100%;
+  border-radius: var(--radius-s); object-fit: cover; background: var(--line);
+}
+.podium2 .medal {
+  position: absolute; left: -.35rem; bottom: -.35rem;
+  width: clamp(1.6rem, 2.6vw, 2.6rem); height: clamp(1.6rem, 2.6vw, 2.6rem);
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--paper); box-shadow: var(--shadow-s);
+  font-size: clamp(.85rem, 1.4vw, 1.4rem); line-height: 1;
+}
+.podium2 li.is-first .visual { width: clamp(5rem, 9.5vw, 11rem); aspect-ratio: 4 / 3; }
+.podium2 .body { min-width: 0; display: grid; gap: .1rem; }
+.podium2 .title {
+  font-weight: 800; font-size: clamp(.95rem, 1.35vw, 1.45rem); line-height: 1.15;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.podium2 .author { color: var(--ink-soft); font-size: clamp(.75rem, .95vw, 1rem); }
+.podium2 .score { text-align: center; }
+.podium2 .score b {
+  display: block; font-size: clamp(1.3rem, 2.4vw, 2.4rem); font-weight: 800;
+  line-height: 1; color: var(--brand-dark); font-variant-numeric: tabular-nums;
+}
+.podium2 .score small { font-size: clamp(.65rem, .8vw, .85rem); color: var(--ink-faint); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+.veil2, .ranking-empty {
+  flex: 1; display: grid; place-items: center; text-align: center; margin: 0;
+  font-weight: 800; line-height: 1.3;
+  font-size: clamp(1.1rem, 1.9vw, 1.9rem);
+}
+.ranking-empty { font-weight: 600; color: var(--ink-faint); font-size: clamp(.9rem, 1.2vw, 1.2rem); }
+
+/* --- Metriques ---------------------------------------------------- */
+.d2-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 1vw; align-items: stretch; }
+.metric {
+  background: var(--paper); border-radius: var(--radius-m);
+  padding: clamp(.5rem, 1vw, 1rem) clamp(.7rem, 1.2vw, 1.3rem);
+  box-shadow: var(--shadow-s);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.metric > span {
+  font-size: clamp(1.5rem, 3.2vw, 3rem); font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.metric small {
+  color: var(--ink-faint); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; font-size: clamp(.62rem, .8vw, .82rem); margin-top: .2rem;
+}
+.metric.is-up > span { animation: pop .6s ease both; }
+@keyframes pop {
+  0% { transform: scale(1); color: var(--ink); }
+  40% { transform: scale(1.14); color: var(--brand-dark); }
+  100% { transform: scale(1); color: var(--ink); }
+}
+
+.metric--qr { flex-direction: row; align-items: center; gap: clamp(.6rem, 1vw, 1rem); }
+.metric--qr img { width: clamp(4rem, 7vw, 6.5rem); height: auto; border-radius: 8px; }
+.qr-text { display: grid; gap: .15rem; font-size: clamp(.75rem, .95vw, 1rem); }
+.qr-text strong { font-size: clamp(.85rem, 1.1vw, 1.15rem); }
+
+.live { display: inline-flex; align-items: center; gap: .4rem; font-weight: 700; color: var(--ok); font-size: clamp(.7rem, .85vw, .9rem); }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; }
+.live.is-off { color: var(--danger); }
+.live.is-off i { background: var(--danger); }
+
+/* --- Ecrans etroits (regie, portable de controle) ------------------ */
+@media (max-width: 1000px) {
+  .display2 { height: auto; overflow: auto; }
+  .d2-main { grid-template-columns: minmax(0, 1fr); }
+  .stage-frame { aspect-ratio: 16 / 10; }
+  .d2-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric--qr { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide.is-on, .stage-caption.is-fresh, .podium2 li.is-moved, .metric.is-up > span, .stage-kicker .dot { animation: none; }
+  .slide { transition: none; }
+  .stage-progress i.is-running { animation: none; width: 100%; }
+}

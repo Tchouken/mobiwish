@@ -16,6 +16,7 @@ async function main() {
     console.log(`  Borne iPad   : ${config.publicUrl}/kiosk`);
     console.log(`  Vote mobile  : ${config.publicUrl}/vote`);
     console.log(`  Ecran        : ${config.publicUrl}/display`);
+    console.log(`  Ecran v2     : ${config.publicUrl}/display2`);
     console.log(`  Admin        : ${config.publicUrl}/admin`);
     console.log(`  Base         : ${config.database.driver}   Images : ${config.storage.driver} / « ${config.image.provider} »\n`);
   });

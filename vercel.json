@@ -32,6 +32,10 @@
       "destination": "/display/index.html"
     },
     {
+      "source": "/display2",
+      "destination": "/display2/index.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin/index.html"
     },
@@ -42,7 +46,7 @@
   ],
   "headers": [
     {
-      "source": "/(kiosk|vote|display|admin)/index.html",
+      "source": "/(kiosk|vote|display|display2|admin)/index.html",
       "headers": [
         {
           "key": "Cache-Control",
