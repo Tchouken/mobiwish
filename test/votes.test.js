@@ -156,3 +156,12 @@ test('session : /me expose le bulletin deja depose', async (t) => {
   const anonymous = await server.request('/api/me');
   assert.equal(anonymous.status, 401);
 });
+
+test('vote : toute une salle derriere le meme Wi-Fi peut s’identifier en meme temps', async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+
+  // 60 personnes, une seule adresse IP publique, dans la meme minute.
+  const results = await Promise.all(Array.from({ length: 60 }, () => identify(server)));
+  assert.ok(results.every((r) => r.token), 'aucun votant ne doit etre refuse');
+});

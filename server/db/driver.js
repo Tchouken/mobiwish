@@ -127,7 +127,10 @@ function createDriver(config) {
 /** Colonnes existantes d'une table, quel que soit le moteur. */
 async function columnsOf(driver, table) {
   if (driver.dialect === 'postgres') {
-    const rows = await driver.query('SELECT column_name FROM information_schema.columns WHERE table_name = ?', [table]);
+    const rows = await driver.query(
+      'SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ?',
+      [table]
+    );
     return rows.map((r) => r.column_name);
   }
   const rows = await driver.query(`PRAGMA table_info(${table})`, []);
@@ -151,16 +154,34 @@ async function ensureColumns(driver) {
   }
 }
 
-/** Cree les tables si besoin. Memoise : une seule fois par processus. */
+/** Identifiant arbitraire du verrou de migration PostgreSQL. */
+const SCHEMA_LOCK = 482019;
+
+/**
+ * Cree les tables si besoin. Memoise : une seule fois par processus.
+ *
+ * En serverless, plusieurs instances demarrent ensemble apres un deploiement :
+ * la structure est posee dans une seule transaction, derriere un verrou. La
+ * seconde instance attend la premiere puis ne trouve plus rien a faire, et une
+ * colonne n'est jamais ajoutee sans la reprise de donnees qui l'accompagne.
+ * Un echec (base qui se reveille, coupure reseau) n'est pas memorise : la
+ * requete suivante retente, au lieu de laisser l'instance en panne.
+ */
 function ensureSchema(driver) {
   if (!driver.__schemaReady) {
-    driver.__schemaReady = (async () => {
-      // Ordre impose : tables, puis colonnes ajoutees apres coup, puis index.
-      // Un index peut porter sur une colonne absente d'une base existante.
-      for (const statement of TABLES) await driver.run(statement);
-      await ensureColumns(driver);
-      for (const statement of INDEXES) await driver.run(statement);
-    })();
+    driver.__schemaReady = driver
+      .tx(async (db) => {
+        if (db.dialect === 'postgres') await db.run(`SELECT pg_advisory_xact_lock(${SCHEMA_LOCK})`);
+        // Ordre impose : tables, puis colonnes ajoutees apres coup, puis index.
+        // Un index peut porter sur une colonne absente d'une base existante.
+        for (const statement of TABLES) await db.run(statement);
+        await ensureColumns(db);
+        for (const statement of INDEXES) await db.run(statement);
+      })
+      .catch((err) => {
+        driver.__schemaReady = null;
+        throw err;
+      });
   }
   return driver.__schemaReady;
 }

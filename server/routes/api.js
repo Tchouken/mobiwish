@@ -50,6 +50,12 @@ function publicCache(res) {
   }
 }
 
+// Le jour J, toute la salle sort par la meme adresse IP (Wi-Fi du lieu) :
+// une limite par IP bloquerait les votants des que le QR code s'affiche.
+// Les limites portent donc sur la personne, pas sur le reseau.
+const byIpAndEmail = (req) => `${req.ip}|${String(req.body?.email || '').trim().toLowerCase()}`;
+const byParticipant = (req) => req.participant.id;
+
 module.exports = function apiRoutes({ store, hub, generate = runGeneration, logger = console }) {
   const router = express.Router();
 
@@ -119,7 +125,7 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
   // --- Identification simple (borne et mobile) ----------------------------
   router.post(
     '/session',
-    rateLimit({ windowMs: 60000, max: 30 }),
+    rateLimit({ windowMs: 60000, max: 10, keyFn: byIpAndEmail }),
     route(async (req, res) => {
       const firstName = cleanText(req.body.firstName, { field: 'Prenom', max: 60 });
       const lastName = cleanText(req.body.lastName, { field: 'Nom', max: 60 });
@@ -165,7 +171,7 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
     '/projects',
     requireKioskAccess,
     requireParticipant,
-    rateLimit({ windowMs: 60000, max: 10 }),
+    rateLimit({ windowMs: 60000, max: 10, keyFn: byParticipant }),
     route(async (req, res) => {
       if (!(await store.flag('kiosk_open'))) {
         throw new HttpError(409, 'kiosk_closed', 'La borne est fermee pour le moment.');
@@ -263,7 +269,7 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
     '/projects/:id/regenerate',
     requireKioskAccess,
     requireParticipant,
-    rateLimit({ windowMs: 60000, max: 10 }),
+    rateLimit({ windowMs: 60000, max: 10, keyFn: byParticipant }),
     route(async (req, res) => {
       const project = await store.project(req.params.id);
       if (!project) throw new HttpError(404, 'not_found', 'Projet introuvable.');
@@ -353,7 +359,7 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
   router.post(
     '/votes',
     requireParticipant,
-    rateLimit({ windowMs: 60000, max: 15 }),
+    rateLimit({ windowMs: 60000, max: 15, keyFn: byParticipant }),
     route(async (req, res) => {
       if (!(await store.flag('voting_open'))) {
         throw new HttpError(409, 'voting_closed', 'Les votes sont fermes.');

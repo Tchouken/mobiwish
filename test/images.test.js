@@ -159,7 +159,7 @@ test('store Blob prive : l’image est relayee par l’application', async (t) =
       return { url: `https://store.private.blob.vercel-storage.com/${pathname}` };
     },
     get: async (pathname, options) => {
-      if (!pathname.endsWith('prj_present.png')) return null;
+      if (!/^projects\/prj_present-[a-z0-9]+\.png$/.test(pathname)) return null;
       assert.equal(options.access, 'private');
       assert.equal(options.token, 'jeton-de-test');
       return {
@@ -176,8 +176,8 @@ test('store Blob prive : l’image est relayee par l’application', async (t) =
   const saved = await saveImage({ id: 'prj_present', buffer: Buffer.from('x'), ext: 'png', mime: 'image/png' });
 
   // L'URL privee exigerait un jeton : inutilisable dans une balise <img>.
-  assert.equal(saved.url, '/media/prj_present.png');
-  assert.equal(puts[0].pathname, 'projects/prj_present.png');
+  assert.match(saved.url, /^\/media\/prj_present-[a-z0-9]+\.png$/);
+  assert.equal(puts[0].pathname, `projects/${saved.url.slice('/media/'.length)}`);
   assert.equal(puts[0].options.access, 'private');
 
   const { createApp } = require('../server/app');
@@ -217,7 +217,29 @@ test('store Blob public : l’URL du CDN est utilisee telle quelle', async (t) =
 
   const { saveImage } = require('../server/services/media');
   const saved = await saveImage({ id: 'prj_public', buffer: Buffer.from('x'), ext: 'jpg', mime: 'image/jpeg' });
-  assert.match(saved.url, /^https:\/\/store\.public\.blob\.vercel-storage\.com\/projects\/prj_public\.jpg$/);
+  assert.match(saved.url, /^https:\/\/store\.public\.blob\.vercel-storage\.com\/projects\/prj_public-[a-z0-9]+\.jpg$/);
+});
+
+test('store Blob : une autre image ne reecrit jamais le fichier precedent', async (t) => {
+  const previous = { ...config.storage };
+  config.storage.driver = 'blob';
+  config.storage.blobAccess = 'public';
+
+  // Comme Vercel Blob : un chemin deja occupe est refuse.
+  const taken = new Set();
+  const restore = stubBlobSdk({
+    put: async (pathname) => {
+      if (taken.has(pathname)) throw new Error('This blob already exists');
+      taken.add(pathname);
+      return { url: `https://store.public.blob.vercel-storage.com/${pathname}` };
+    },
+  });
+  t.after(() => { restore(); Object.assign(config.storage, previous); });
+
+  const { saveImage } = require('../server/services/media');
+  const first = await saveImage({ id: 'prj_again', buffer: Buffer.from('a'), ext: 'png', mime: 'image/png' });
+  const second = await saveImage({ id: 'prj_again', buffer: Buffer.from('b'), ext: 'png', mime: 'image/png' });
+  assert.notEqual(first.url, second.url, 'chaque rendu a sa propre adresse, que les caches ne confondent pas');
 });
 
 test('store Blob : un mode declare qui ne correspond pas ne bloque pas le depot', async (t) => {
