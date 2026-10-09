@@ -217,6 +217,19 @@ class Store {
     return res.rowCount > 0 ? this.project(id) : null;
   }
 
+  /**
+   * Texte corrige par l'auteur avant publication : meme projet, nouveau texte.
+   * La reformulation est effacee pour etre recalculee avec la prochaine image.
+   */
+  async reviseProject(id, { title, answer, prompt }) {
+    const res = await this.db.run(
+      `UPDATE projects SET title = ?, answer = ?, prompt = ?, summary = NULL, updated_at = ?
+       WHERE id = ? AND published = 0 AND status IN ('ready', 'failed')`,
+      [title, answer, prompt, nowIso(), id]
+    );
+    return res.rowCount > 0;
+  }
+
   /** Remet un projet en generation pour produire une autre image. */
   async resetProjectForRender(id) {
     const res = await this.db.run(

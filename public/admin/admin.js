@@ -94,7 +94,18 @@
     'vote_headline', 'vote_intro', 'display_headline', 'display_intro',
   ];
 
+  // Reglages en cours de saisie : le rafraichissement periodique ne doit pas
+  // ecraser ce que l'animateur tape avant d'avoir enregistre.
+  let settingsDirty = false;
+  const markDirty = (evt) => {
+    if (evt.target.closest('#login, #projects, #search, .pager')) return;
+    if (evt.target.matches('input, textarea, select')) settingsDirty = true;
+  };
+  document.addEventListener('input', markDirty);
+  document.addEventListener('change', markDirty);
+
   function renderSettings() {
+    if (settingsDirty) return;
     const s = state.settings;
     el('event_name').value = s.event_name || '';
     el('question').value = s.question || '';
@@ -164,7 +175,7 @@
     if (p.hidden) return '<span class="badge badge--off">masqué</span>';
     if (p.status === 'ready' && !p.published) return '<span class="badge badge--warn">non validé</span>';
     if (p.status === 'ready') return '<span class="badge badge--ok">publié</span>';
-    if (p.status === 'generating') return '<span class="badge badge--warn">génération…</span>';
+    if (p.status === 'generating' || p.status === 'rendering') return '<span class="badge badge--warn">génération…</span>';
     return `<span class="badge badge--warn" title="${esc(p.error || '')}">échec</span>`;
   }
 
@@ -188,6 +199,7 @@
         },
       });
       el('settings-ok').hidden = false;
+      settingsDirty = false;
       await load();
     } catch (err) {
       el('settings-error').textContent = err.message;

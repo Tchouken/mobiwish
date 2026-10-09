@@ -284,6 +284,19 @@ module.exports = function apiRoutes({ store, hub, generate = runGeneration, logg
       if (project.render_count >= maxRenders) {
         throw new HttpError(429, 'render_limit', `Vous avez atteint la limite de ${maxRenders} images pour cette vision.`);
       }
+
+      // « Modifier mon texte » : le meme projet repart avec le texte corrige,
+      // sans creer de doublon ni remettre a zero le nombre d'images.
+      if (req.body?.answer !== undefined) {
+        const answer = cleanMultiline(req.body.answer, { field: 'Description', min: 10, max: 1200 });
+        const revised = await store.reviseProject(project.id, {
+          answer,
+          title: cleanText(req.body.title || buildTitle(answer), { field: 'Titre', min: 2, max: 80 }),
+          prompt: buildPrompt(answer, { question: project.question }),
+        });
+        if (!revised) throw new HttpError(409, 'render_in_progress', 'Une image est deja en cours de generation.');
+      }
+
       if (!(await store.resetProjectForRender(project.id))) {
         throw new HttpError(409, 'render_in_progress', 'Une image est deja en cours de generation.');
       }

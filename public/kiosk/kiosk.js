@@ -121,8 +121,11 @@
     submit.disabled = true;
     show('loading');
 
+    // Un projet non publie est en cours : l'auteur corrige son texte, on
+    // relance la meme vision au lieu d'en creer une seconde.
+    const editing = state.project;
     try {
-      const { project, renderMode } = await api('/projects', {
+      const { project, renderMode } = await api(editing ? `/projects/${editing.id}/regenerate` : '/projects', {
         method: 'POST',
         token: state.token,
         headers: kioskToken ? { 'x-kiosk-token': kioskToken } : {},
@@ -143,6 +146,13 @@
 
       await waitForImage(project.id);
     } catch (err) {
+      // Plus d'image possible pour cette vision : retour a l'image deja
+      // obtenue, que l'auteur peut toujours publier.
+      if (editing && editing.status === 'ready' && err.code === 'render_limit') {
+        renderReview(editing);
+        showError('review-error', err.message);
+        return;
+      }
       showError('answer-error', err.message);
       show('answer');
     } finally {

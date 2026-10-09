@@ -124,6 +124,32 @@ test('reprise : plafonnee par le reglage de l’evenement', async (t) => {
   assert.equal(third.body.error.code, 'render_limit');
 });
 
+test('modifier mon texte : la meme vision repart, sans doublon ni compteur remis a zero', async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+
+  const { token } = await identify(server);
+  const created = await createProject(server, token, IDEE, { publish: false, title: 'Le toit nourricier' });
+  const id = created.body.project.id;
+
+  const texte = 'Une serre connectee dans le hall, ou chacun depose et recupere des plants pour son balcon.';
+  const edited = await server.request(`/api/projects/${id}/regenerate`, {
+    method: 'POST',
+    token,
+    body: { title: 'La serre du hall', answer: texte },
+  });
+  assert.equal(edited.status, 202);
+  await server.settled();
+
+  const project = (await server.request(`/api/projects/${id}`, { token })).body.project;
+  assert.equal(project.status, 'ready');
+  assert.equal(project.title, 'La serre du hall');
+  assert.equal(project.answer, texte);
+  assert.equal(project.renderCount, 2, 'la correction compte comme une image de plus');
+  const rows = await server.store.db.query('SELECT COUNT(*) AS n FROM projects', []);
+  assert.equal(Number(rows[0].n), 1, 'aucun projet orphelin');
+});
+
 test('textes des ecrans : exposes aux interfaces et modifiables depuis la console', async (t) => {
   const server = await startServer();
   t.after(() => server.close());
