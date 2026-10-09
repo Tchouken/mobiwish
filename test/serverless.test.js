@@ -139,3 +139,19 @@ test('hebergement incomplet : page d’installation au lieu d’un plantage', as
   assert.equal(health.status, 503);
   assert.deepEqual((await health.json()).missing, ['DATABASE_URL']);
 });
+
+test('QR code : en production Vercel, le domaine public et non l’adresse protegee du deploiement', () => {
+  const config = require('../server/config');
+  const vercel = {
+    VERCEL_ENV: 'production',
+    VERCEL_URL: 'mobiwish-elycnrdjn-equipe.vercel.app',
+    VERCEL_PROJECT_PRODUCTION_URL: 'mobiwish.vercel.app',
+  };
+  assert.equal(config.derivePublicUrl(vercel), 'https://mobiwish.vercel.app');
+  assert.equal(config.derivePublicUrl({ ...vercel, PUBLIC_URL: 'https://vote.exemple.fr' }), 'https://vote.exemple.fr');
+  assert.equal(
+    config.derivePublicUrl({ ...vercel, VERCEL_ENV: 'preview' }),
+    'https://mobiwish-elycnrdjn-equipe.vercel.app',
+    'une preview garde sa propre adresse'
+  );
+});

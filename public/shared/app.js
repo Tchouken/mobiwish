@@ -159,7 +159,9 @@
 
   function thumb(url, width) {
     if (!url) return '';
-    if (!images.optimize || url.startsWith('data:')) return url;
+    // L'optimiseur de Vercel refuse le SVG (images du generateur local, y
+    // compris en repli si le fournisseur d'images tombe) : servi tel quel.
+    if (!images.optimize || url.startsWith('data:') || /\.svg(\?|$)/i.test(url)) return url;
     return `/_vercel/image?url=${encodeURIComponent(url)}&w=${width}&q=75`;
   }
 

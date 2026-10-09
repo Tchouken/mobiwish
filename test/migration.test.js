@@ -106,6 +106,8 @@ test('correction : l’horizon 2035 deja enregistre devient 2046', async (t) => 
     vote_headline: 'Votez pour leboncoin en 2035',
     display_headline: 'Votez pour leboncoin en 2035',
     kiosk_cta: 'Créer ma vision',
+    // Une empreinte de code admin qui contient la sequence par hasard.
+    admin_token_hash: 'ab2035cd',
   });
 
   await store.seedSettings();
@@ -117,6 +119,7 @@ test('correction : l’horizon 2035 deja enregistre devient 2046', async (t) => 
   assert.equal(settings.vote_headline, 'Votez pour leboncoin en 2046');
   assert.equal(settings.display_headline, 'Votez pour leboncoin en 2046');
   assert.equal(settings.kiosk_cta, 'Créer ma vision', 'les textes sans date ne bougent pas');
+  assert.equal(settings.admin_token_hash, 'ab2035cd', 'le code admin ne doit jamais etre altere');
 });
 
 test('correction : appliquee une seule fois, un choix ulterieur est respecte', async (t) => {
@@ -133,4 +136,22 @@ test('correction : appliquee une seule fois, un choix ulterieur est respecte', a
   await store.setSettings({ kiosk_headline: 'Rétrospective 2035' });
   await store.applyCorrections();
   assert.equal((await store.settings()).kiosk_headline, 'Rétrospective 2035');
+});
+
+test('migration : un echec au demarrage n’est pas memorise, la tentative suivante reussit', async (t) => {
+  const driver = await basePrecedente();
+  t.after(() => driver.close());
+
+  // La base se reveille : la premiere requete echoue.
+  const realRun = driver.run;
+  let down = true;
+  driver.run = async (sql, params) => {
+    if (down) throw new Error('Connection terminated due to connection timeout');
+    return realRun(sql, params);
+  };
+
+  await assert.rejects(ensureSchema(driver), /timeout/);
+  down = false;
+  await ensureSchema(driver);
+  assert.ok((await columnsOf(driver, 'projects')).includes('published'));
 });

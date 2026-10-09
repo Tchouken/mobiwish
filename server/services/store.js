@@ -18,7 +18,17 @@ const toInt = (value, fallback = 0) => {
  * marqueur est lui-meme un reglage : il survit aux redeploiements sans
  * demander de migration.
  */
-const CORRECTIONS = [{ marker: 'correction_horizon_2046', from: '2035', to: '2046' }];
+/**
+ * Seuls les textes affiches sont corriges : une empreinte (code admin) ou un
+ * nombre peut contenir la sequence par hasard, et la modifier verrouillerait
+ * la console.
+ */
+const DISPLAYED_TEXTS = [
+  'event_name', 'question',
+  'kiosk_headline', 'kiosk_intro', 'kiosk_cta', 'kiosk_footnote',
+  'vote_headline', 'vote_intro', 'display_headline', 'display_intro',
+];
+const CORRECTIONS = [{ marker: 'correction_horizon_2046', from: '2035', to: '2046', keys: DISPLAYED_TEXTS }];
 
 /**
  * Criteres communs a la galerie et a son total : meme filtre, meme
@@ -81,12 +91,13 @@ class Store {
    * qui reecrirait « 2035 » sciemment plus tard ne serait pas contredit.
    */
   async applyCorrections() {
-    for (const { marker, from, to } of CORRECTIONS) {
+    for (const { marker, from, to, keys } of CORRECTIONS) {
       if (await this.setting(marker, '')) continue;
 
       const rows = await this.db.query('SELECT key, value FROM settings', []);
       const patch = {};
       for (const row of rows) {
+        if (!keys.includes(row.key)) continue;
         const value = String(row.value);
         if (value.includes(from)) patch[row.key] = value.split(from).join(to);
       }
@@ -204,6 +215,19 @@ class Store {
       [nowIso(), id]
     );
     return res.rowCount > 0 ? this.project(id) : null;
+  }
+
+  /**
+   * Texte corrige par l'auteur avant publication : meme projet, nouveau texte.
+   * La reformulation est effacee pour etre recalculee avec la prochaine image.
+   */
+  async reviseProject(id, { title, answer, prompt }) {
+    const res = await this.db.run(
+      `UPDATE projects SET title = ?, answer = ?, prompt = ?, summary = NULL, updated_at = ?
+       WHERE id = ? AND published = 0 AND status IN ('ready', 'failed')`,
+      [title, answer, prompt, nowIso(), id]
+    );
+    return res.rowCount > 0;
   }
 
   /** Remet un projet en generation pour produire une autre image. */

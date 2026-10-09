@@ -22,7 +22,11 @@ async function getStore(options = {}) {
       if (config.database.autoMigrate) await ensureSchema(cached.driver);
       await cached.store.seedSettings();
       await cached.store.applyCorrections();
-    })();
+    })().catch((err) => {
+      // Echec passager au demarrage : la requete suivante retente.
+      cached.ready = null;
+      throw err;
+    });
   }
 
   await cached.ready;

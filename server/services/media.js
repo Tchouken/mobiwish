@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('crypto');
 const fs = require('fs/promises');
 const path = require('path');
 const config = require('../config');
@@ -12,14 +13,22 @@ const config = require('../config');
  *          ephemere et non partage entre instances.
  */
 
+/**
+ * Nom de fichier propre a chaque rendu. « Une autre image » produit un nouveau
+ * fichier au lieu d'ecraser le precedent : Vercel Blob refuse l'ecrasement par
+ * defaut, et toutes les couches de cache (CDN, optimiseur d'images, /media)
+ * gardent un an le contenu d'une adresse donnee.
+ */
+const fileName = (id, ext) => `${id}-${Date.now().toString(36)}${crypto.randomBytes(3).toString('hex')}.${ext}`;
+
 async function saveToDisk({ id, buffer, ext, mime }) {
-  const file = `${id}.${ext}`;
+  const file = fileName(id, ext);
   await fs.mkdir(config.mediaDir, { recursive: true });
   await fs.writeFile(path.join(config.mediaDir, file), buffer);
   return { url: `/media/${file}`, mime };
 }
 
-/** Chemin du fichier dans le store : stable, derive de l'identifiant du projet. */
+/** Chemin du fichier dans le store, derive de l'identifiant du projet. */
 const blobPath = (file) => `projects/${file}`;
 
 /**
@@ -46,7 +55,7 @@ function accessCandidates() {
 async function saveToBlob({ id, buffer, ext, mime }) {
   const { put } = require('@vercel/blob');
   const token = config.storage.blobToken;
-  const file = `${id}.${ext}`;
+  const file = fileName(id, ext);
   const candidates = accessCandidates();
   let lastError = null;
 

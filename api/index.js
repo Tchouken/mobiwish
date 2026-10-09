@@ -19,6 +19,9 @@ function boot() {
     appPromise = config.missing.length
       ? Promise.resolve(createApp({ store: null, hub: new EventHub() }))
       : getStore().then((store) => createApp({ store, hub: new EventHub() }));
+    // Un echec au demarrage (base injoignable un instant) ne doit pas laisser
+    // l'instance en panne jusqu'a son recyclage : la requete suivante retente.
+    appPromise.catch(() => { appPromise = null; });
   }
   return appPromise;
 }

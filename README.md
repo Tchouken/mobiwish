@@ -70,7 +70,8 @@ donc une base gérée et un stockage objet. Le reste est automatique.
 
    Le reste se déduit tout seul :
    - `IMAGE_PROVIDER` — déduit de la clé présente (`GEMINI_API_KEY` → Gemini, `OPENAI_API_KEY` → OpenAI, aucune → générateur local) ;
-   - `PUBLIC_URL` — l'adresse du déploiement, sauf domaine personnalisé à déclarer ;
+   - `PUBLIC_URL` — en production, le domaine public du projet (`mobiwish.vercel.app` ou domaine
+     personnalisé), jamais l'adresse propre à un déploiement, protégée par l'authentification Vercel ;
    - `SESSION_SECRET` — dérivé d'une valeur secrète déjà présente et stable ;
    - `BLOB_ACCESS` — le mode du store (public ou privé) est découvert au premier dépôt ;
    - `ADMIN_TOKEN` — à défaut, le code d'accès se choisit à la première ouverture de `/admin`,
