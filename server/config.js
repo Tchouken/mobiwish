@@ -18,11 +18,27 @@ const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 const dbDriver = (process.env.DB_DRIVER || (databaseUrl ? 'postgres' : 'sqlite')).toLowerCase();
 const storageDriver = (process.env.STORAGE_DRIVER || (onVercel ? 'blob' : 'disk')).toLowerCase();
 
+/**
+ * Adresse du QR code. Sur Vercel, VERCEL_URL est l'adresse propre a chaque
+ * deploiement (mobiwish-abc123-equipe.vercel.app) : elle est protegee par
+ * l'authentification Vercel, et un participant qui scanne le QR code tombe
+ * sur une page de connexion. En production, on vise le domaine public du
+ * projet (mobiwish.vercel.app ou domaine personnalise).
+ */
+function derivePublicUrl(env) {
+  if (env.PUBLIC_URL) return env.PUBLIC_URL;
+  if (env.VERCEL_ENV === 'production' && env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`;
+  return `http://localhost:${int(env.PORT, 3000)}`;
+}
+
 const config = {
   env: process.env.NODE_ENV || 'development',
   onVercel,
   port: int(process.env.PORT, 3000),
-  publicUrl: (process.env.PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://localhost:${int(process.env.PORT, 3000)}`)).replace(/\/$/, ''),
+  publicUrl: derivePublicUrl(process.env).replace(/\/$/, ''),
 
   // A defaut de secret fourni, on en derive un a partir d'une valeur secrete
   // deja presente et stable (chaine de connexion, jeton de stockage) : le meme
@@ -184,5 +200,7 @@ function inferredProvider() {
   if (process.env.OPENAI_API_KEY) return 'openai';
   return 'mock';
 }
+
+config.derivePublicUrl = derivePublicUrl;
 
 module.exports = config;
